@@ -1,0 +1,27 @@
+-This .gy file tests EVERY avialable function to make sure that Guython is working proper-
+import example.gy
+
+c=0
+
+ifexample.b==2
+    print"Imports work!"
+    c=c+1
+deftest_
+    a=0
+    whilea<5
+        a=a+1
+    print"While loops work!"
+    c=c+1
+    print"Variables work!"
+    c=c+1
+    print"Functions work!"
+    c=c+1
+
+ifa==5
+    print"Variable math works!"
+    c=c+1
+test_
+
+
+ifc==6
+    print"Guython is operating properly!"

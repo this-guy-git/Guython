@@ -3,8 +3,6 @@ import math
 import sys
 import os
 
-ver = "v0.1 b2516."
-
 class GuythonInterpreter:
     def __init__(self):
         self.variables = {}
@@ -14,39 +12,45 @@ class GuythonInterpreter:
         }
         self.loop_stack = []
         self.if_stack = []
-        self.modules = {}  # For imported modules
+        self.modules = {}
+        self.functions = {}
+        self.defining_function = None
+        self.function_stack = []
+
+    def _strip_comments(self, line):
+        result = ''
+        in_comment = False
+        i = 0
+        while i < len(line):
+            if not in_comment and line[i] == '-':
+                end = line.find('-', i + 1)
+                if end != -1:
+                    i = end + 1
+                else:
+                    break
+            else:
+                result += line[i]
+                i += 1
+        return result.strip()
 
     def run_line(self, line):
         line = line.rstrip("\n")
+        line = self._strip_comments(line)
         if not line.strip():
             return
 
         indent = len(line) - len(line.lstrip())
         line = line.strip()
 
-        # Internal command to run a .gy file: guython filename.gy
-        if line.startswith("guython "):
-            _, filename = line.split(" ", 1)
-            filename = filename.strip()
-            if not filename.endswith(".gy") and not filename.endswith(".guy"):
-                print("Invalid File Type: Given file must be .gy or .guy")
-                return
-            if not os.path.isfile(filename):
-                print(f"File not found: {filename}")
-                return
-            with open(filename, 'r') as f:
-                for subline in f:
-                    self.run_line(subline)
-                self.execute_loops()
-            return
-
-        # Adjust control stacks based on indentation
         while self.if_stack and self.if_stack[-1][1] >= indent:
             self.if_stack.pop()
         while self.loop_stack and self.loop_stack[-1][1] >= indent:
             self.loop_stack.pop()
+        if self.defining_function and indent <= self.defining_function[1]:
+            self.functions[self.defining_function[0]] = self.function_stack
+            self.defining_function = None
+            self.function_stack = []
 
-        # Easter eggs
         if line == "5+5=4":
             print("bruh")
             return
@@ -55,17 +59,12 @@ class GuythonInterpreter:
             print("you stupid")
             print("its 19")
             return
-        if line == "ver":
-            print(f"Guython Interpreter {ver}")
-            return
 
-        # Input shortcut
         if line.startswith("printinput") or line.startswith("print input"):
             user_input = input()
             print(user_input)
             return
 
-        # Input assignment
         if line.endswith("=input"):
             var_name = line[:-6].strip()
             if var_name in dir(__builtins__) or var_name in self.safe_globals:
@@ -75,7 +74,20 @@ class GuythonInterpreter:
             self.variables[var_name] = user_input
             return
 
-        # If-statement
+        if line.startswith("def"):
+            match = re.match(r'def\s*(\w+)_\s*', line)
+            if match:
+                func_name = match.group(1)
+                self.defining_function = (func_name, indent)
+                self.function_stack = []
+            else:
+                print("Invalid function definition. Function name must end with '_'")
+            return
+
+        if self.defining_function:
+            self.function_stack.append((indent, line))
+            return
+
         if line.startswith("if"):
             condition = line[2:].strip()
             try:
@@ -85,43 +97,48 @@ class GuythonInterpreter:
                 print(f"Error in if condition: {e}")
             return
 
-        # While-statement
         if line.startswith("while"):
             condition = line[5:].strip()
             self.loop_stack.append((condition, indent, []))
             return
 
-        # Add lines to loop block
         if self.loop_stack:
             self.loop_stack[-1][2].append((indent, line))
             return
 
-        # Only execute if not inside false if block
         if all(active for active, _ in self.if_stack):
             self._process_line(line)
 
     def _process_line(self, line):
-        # Handle import (e.g., importguy.gy or import guy.gy)
-        import_match = re.match(r'import(?:guy\.gy)?\s*(.+)', line) or re.match(r'import guy\.guy\s*(.+)', line)
-        if import_match:
-            filename = import_match.group(1).strip()
-            if filename.endswith(".gy") or filename.endswith(".guy"):
-                module_name = os.path.splitext(os.path.basename(filename))[0]
-                module_interpreter = GuythonInterpreter()
-                if not os.path.isfile(filename):
-                    print(f"Module file not found: {filename}")
-                    return
-                with open(filename, 'r') as f:
-                    for module_line in f:
-                        module_line = module_line.strip()
-                        if '=' in module_line and not module_line.startswith('print'):
-                            module_interpreter.run_line(module_line)
-                self.variables[module_name] = module_interpreter.variables
-            else:
-                print("Invalid File Type: Given file must be .gy or .guy")
+        if line.startswith("import"):
+            import_match = re.match(r'import\s*(.+)', line)
+            if import_match:
+                filename = import_match.group(1).strip()
+                if filename.endswith(".gy") or filename.endswith(".guy"):
+                    module_name = os.path.splitext(os.path.basename(filename))[0]
+                    module_interpreter = GuythonInterpreter()
+                    if not os.path.isfile(filename):
+                        print(f"Module file not found: {filename}")
+                        return
+                    with open(filename, 'r') as f:
+                        for module_line in f:
+                            module_line = module_line.strip()
+                            if '=' in module_line and not module_line.startswith('print'):
+                                module_interpreter.run_line(module_line)
+                    self.variables[module_name] = module_interpreter.variables
+                else:
+                    print("Invalid File Type: Given file must be .gy or .guy")
             return
 
-        # Variable assignment
+        if line.endswith("_"):
+            func_name = line[:-1]
+            if func_name in self.functions:
+                for blk_indent, blk_line in self.functions[func_name]:
+                    self.run_line(' ' * blk_indent + blk_line)
+            else:
+                print(f"Function '{func_name}_' not defined")
+            return
+
         if '=' in line and not line.startswith('print'):
             var_match = re.match(r'(\w+)\s*=\s*(.+)', line)
             if var_match:
@@ -138,7 +155,6 @@ class GuythonInterpreter:
             else:
                 print("Invalid assignment syntax.")
 
-        # Print statement with comma-based spacing
         elif line.startswith('print'):
             args_str = line[len('print'):].lstrip()
             if not args_str:
@@ -167,11 +183,10 @@ class GuythonInterpreter:
                         except Exception as e:
                             chunk_parts.append(f"[Error: {e}]")
 
-                output_chunks.append(''.join(chunk_parts))  # no space inside chunk
+                output_chunks.append(''.join(chunk_parts))
 
-            print(' '.join(output_chunks))  # space between comma-separated chunks
+            print(' '.join(output_chunks))
 
-        # Expression line
         else:
             try:
                 result = self._evaluate_expression(line)
@@ -285,7 +300,7 @@ if __name__ == '__main__':
 
     if len(sys.argv) > 1:
         filename = sys.argv[1]
-        if not filename.endswith('.gy') and not filename.endswith('.guy'):
+        if not (filename.endswith('.gy') or filename.endswith('.guy')):
             print("Invalid File Type: Given file must be .gy or .guy")
             sys.exit(1)
         if not os.path.isfile(filename):
@@ -296,7 +311,7 @@ if __name__ == '__main__':
                 interpreter.run_line(line)
             interpreter.execute_loops()
     else:
-        print("Guython Interpreter", ver, "Type 'exit' to quit.")
+        print("Guython Interpreter. Type 'exit' to quit.")
         while True:
             try:
                 line = input(">>> ")

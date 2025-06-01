@@ -1,5 +1,5 @@
 -------------------------
-----GUYTHON V0.1B2516----
+----GUYTHON V0.2B2516----
 -------------------------
 
 ver returns the current Guython version.
@@ -14,6 +14,8 @@ variables are a string that can be set to a value such as a string or a number, 
 
 math operations are possible, such as "5+5" will return "10"
 
+comments are declared with a '-' and end with a '-', for example '-this is a comment and will be ignored-'
+
 -------------------------
 
 import : syntax: (import{fileName}.gy|.guy) | (import {fileName}.gy|.guy), function: imports a .gy|.guy file's variables, ex: import {fileName}.gy, print {fileName}.{variableName}
@@ -22,3 +24,4 @@ while  : syntax: (while{variableName}|{number},{opperand},{variableName}|{number
 if     : syntax: (if{variableName}|{number},{opperand},{variableName}|{number}), function: does any function if the if is true
 guython: syntax: (guython{fileName}.gy|.guy), function: runs the guython file using the interpreter
 input  : syntax: ({variableName}=input) | ({printinput}), function: saves the input or prints the input
+def    : syntax: (def{functionName}_), function: declares a function which can then be called upon with '{functionName}_'. Functions MUST have an '_' at then end of name or they will not be recognized

@@ -13,7 +13,3 @@ Installing Guython is very easy!
 ### **Running external files**
 Run an external file by placing your '.guy' or '.gy' file in the same directory as the 'guython.py' file, and then use the command 'guython {fileName}.gy/.guy' in the intepreter.
 OR run 'python guython.py {fileName}.gy/.guy' in the cmd prompt or terminal while in the same directory as the 'guython.py' file.
-
-### **Whats New**
-- Added functions, which can be declared with 'def{functionName}_'
-- Added comments, which can be used with '-this is a comment-'

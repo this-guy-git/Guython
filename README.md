@@ -1,4 +1,4 @@
-### **GUYTHON V0.2B2516**
+### **GUYTHON**
 
 Guython is a ***VERY*** simple programming language created with Python.
 

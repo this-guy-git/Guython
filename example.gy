@@ -1,8 +1,9 @@
--KEEP THIS B VALUE FOR TESTING PURPOSES-
+-KEEP THIS B VALUE FOR TESTING PURPOSES
 b=2
--DO NOT CHANGE THIS B VALUE-
+-DO NOT CHANGE THIS B VALUE
+-DO NOT MOVE THIS FILE FROM THE SAME DIRECTORY AS 'guython.py' AND 'test.gy' OR TEST WILL RETURN ERROR!
 
+-Put any Guython code below:
 
-defhi_
-    print"hi"
-print"yippee"
+print"wow"
+

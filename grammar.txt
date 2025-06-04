@@ -1,27 +1,46 @@
 -------------------------
-----GUYTHON V0.2B2516----
+---GUYTHON V1.0.0B2536---
 -------------------------
 
-ver returns the current Guython version.
+'ver' to show current Guython version.
+
+'exit' to exit the console.
+
+'var' to show all currently declared variables.
+
+'debug' to enter debug mode.
 
 spaces are optional between any function: print"abc" and print "abc" return the same.
 
-opperand is a comparison, such as "<", ">", or "==".
+opperand is a comparison, such as "<", ">", "and", "or", or, "not".
 
-indentation is either a ' ' or a '	', indentation MUST be used afer a while or if, anything not in the indentation is not part of the while or if.
+indentation is a '.', indentation MUST be used afer a while or if, anything not in the indentation is not part of the while or if.
 
 variables are a string that can be set to a value such as a string or a number, variables can be called by any function other than import.
 
-math operations are possible, such as "5+5" will return "10"
+math operations are possible, such as "5+5" will return "10".
 
-comments are declared with a '-' and end with a '-', for example '-this is a comment and will be ignored-'
+comments are declared with a '-', for example "-this is a comment and will be ignored".
 
 -------------------------
+in order of importance (what gets checked first):
+
+def    : syntax: (def{functionName}_), function: declares a function which can then be called upon with '{functionName}_'. Functions MUST have an '_' at then end of name or they will not be recognized
+
+while  : syntax: (while{variableName}|{number},{opperand},{variableName}|{number}), function: repeats following functions while the operation is true
+
+if     : syntax: (if{variableName}|{number},{opperand},{variableName}|{number}), function: does any function if the if is true
+
+goto   : syntax: (goto{lineNumber}), function: goes to the line declared
 
 import : syntax: (import{fileName}.gy|.guy) | (import {fileName}.gy|.guy), function: imports a .gy|.guy file's variables, ex: import {fileName}.gy, print {fileName}.{variableName}
-print  : syntax: (print"str"|{variableName}|print"str"{variableName}), function: prints the following, additions: ',' using the ',' modifier in between two data adds a space between the two, print "str","wow" will print "str wow" and print "str""wow" will print "strwow"
-while  : syntax: (while{variableName}|{number},{opperand},{variableName}|{number}), function: repeats following functions while the operation is true
-if     : syntax: (if{variableName}|{number},{opperand},{variableName}|{number}), function: does any function if the if is true
-guython: syntax: (guython{fileName}.gy|.guy), function: runs the guython file using the interpreter
+
 input  : syntax: ({variableName}=input) | ({printinput}), function: saves the input or prints the input
-def    : syntax: (def{functionName}_), function: declares a function which can then be called upon with '{functionName}_'. Functions MUST have an '_' at then end of name or they will not be recognized
+
+print  : syntax: (print"str"|{variableName}|print"str"{variableName}), function: prints the following, additions: ',' using the ',' modifier in between two data adds a space between the two, print "str","wow" will print "str wow" and print "str""wow" will print "strwow"
+
+any easter egg
+
+guython: syntax: (guython{fileName}.gy|.guy), function: runs the guython file using the interpreter
+
+

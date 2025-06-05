@@ -1,9 +1,3 @@
--KEEP THIS B VALUE FOR TESTING PURPOSES
+{Do NOT remove this variable!!!}
 b=2
--DO NOT CHANGE THIS B VALUE
--DO NOT MOVE THIS FILE FROM THE SAME DIRECTORY AS 'guython.py' AND 'test.gy' OR TEST WILL RETURN ERROR!
-
--Put any Guython code below:
-
-print"wow"
-
+{KEEP this file in the same directory as 'test.gy'}

@@ -4,11 +4,16 @@ import os
 import sys
 import ast
 import operator
+import tkinter as tk
+import threading
+import time
+from tkinter import ttk, messagebox, filedialog, colorchooser
+from PIL import Image, ImageTk
 from types import SimpleNamespace
 from typing import Dict, List, Tuple, Any, Optional, Union
 
 # Version constant
-VERSION = "v1.0.0b2536"
+VERSION = "v1.1.0b2556"
 
 # Maximum iterations for loops to prevent infinite loops
 MAX_LOOP_ITERATIONS = 10000
@@ -74,6 +79,236 @@ class GuythonGotoException(Exception):
     def __init__(self, target_line: int):
         self.target_line = target_line
         super().__init__(f"Goto line {target_line}")
+
+
+class GuythonGUI:
+    """GUI manager for Guython"""
+    
+    def __init__(self):
+        self.windows = {}
+        self.widgets = {}
+        self.current_window = None
+        self.widget_counter = 0
+        self.running = False
+        
+    def create_window(self, title="Guython Window", width=400, height=300, resizable=True):
+        """Create a new window"""
+        window = tk.Tk() if not self.windows else tk.Toplevel()
+        window.title(title)
+        window.geometry(f"{width}x{height}")
+        window.resizable(resizable, resizable)
+        
+        window_id = f"window_{len(self.windows)}"
+        self.windows[window_id] = window
+        self.current_window = window_id
+        
+        # Handle window closing - FIXED VERSION
+        def on_closing():
+            try:
+                # Remove the window from our tracking
+                if window_id in self.windows:
+                    del self.windows[window_id]
+                
+                # Clean up any widgets associated with this window
+                widgets_to_remove = []
+                for widget_id, widget in self.widgets.items():
+                    try:
+                        # Check if widget belongs to this window
+                        if widget.winfo_toplevel() == window:
+                            widgets_to_remove.append(widget_id)
+                    except tk.TclError:
+                        # Widget is already destroyed
+                        widgets_to_remove.append(widget_id)
+                
+                # Remove the widgets from our tracking
+                for widget_id in widgets_to_remove:
+                    del self.widgets[widget_id]
+                
+                # Update current window if this was the current one
+                if self.current_window == window_id:
+                    if self.windows:
+                        # Set current window to any remaining window
+                        self.current_window = list(self.windows.keys())[0]
+                    else:
+                        self.current_window = None
+                
+                # If no windows left, stop the GUI
+                if len(self.windows) == 0:
+                    self.running = False
+                
+                # Destroy the window
+                window.destroy()
+                
+            except Exception as e:
+                print(f"Error during window close: {e}")
+                # Force cleanup even if there's an error
+                self.running = False
+                try:
+                    window.destroy()
+                except:
+                    pass
+        
+        window.protocol("WM_DELETE_WINDOW", on_closing)
+        return window_id
+    
+    def create_button(self, text="Button", x=10, y=10, width=100, height=30, command=None):
+        """Create a button widget"""
+        if not self.current_window or self.current_window not in self.windows:
+            raise GuythonRuntimeError("No window available. Create a window first.")
+        
+        window = self.windows[self.current_window]
+        button = tk.Button(window, text=text, width=width//8, height=height//20)
+        button.place(x=x, y=y, width=width, height=height)
+        
+        if command:
+            button.config(command=lambda: self._execute_callback(command))
+        
+        widget_id = f"button_{self.widget_counter}"
+        self.widgets[widget_id] = button
+        self.widget_counter += 1
+        return widget_id
+    
+    def create_label(self, text="Label", x=10, y=10, width=100, height=30):
+        """Create a label widget"""
+        if not self.current_window or self.current_window not in self.windows:
+            raise GuythonRuntimeError("No window available. Create a window first.")
+        
+        window = self.windows[self.current_window]
+        label = tk.Label(window, text=text)
+        label.place(x=x, y=y, width=width, height=height)
+        
+        widget_id = f"label_{self.widget_counter}"
+        self.widgets[widget_id] = label
+        self.widget_counter += 1
+        return widget_id
+    
+    def create_entry(self, x=10, y=10, width=100, height=30, placeholder=""):
+        """Create a text entry widget"""
+        if not self.current_window or self.current_window not in self.windows:
+            raise GuythonRuntimeError("No window available. Create a window first.")
+        
+        window = self.windows[self.current_window]
+        entry = tk.Entry(window)
+        entry.place(x=x, y=y, width=width, height=height)
+        
+        if placeholder:
+            entry.insert(0, placeholder)
+            entry.config(fg='grey')
+            
+            def on_focus_in(event):
+                if entry.get() == placeholder:
+                    entry.delete(0, tk.END)
+                    entry.config(fg='black')
+            
+            def on_focus_out(event):
+                if entry.get() == "":
+                    entry.insert(0, placeholder)
+                    entry.config(fg='grey')
+            
+            entry.bind('<FocusIn>', on_focus_in)
+            entry.bind('<FocusOut>', on_focus_out)
+        
+        widget_id = f"entry_{self.widget_counter}"
+        self.widgets[widget_id] = entry
+        self.widget_counter += 1
+        return widget_id
+    
+    def create_image(self, image_path, x=10, y=10, width=None, height=None):
+        """Create an image widget"""
+        if not self.current_window or self.current_window not in self.windows:
+            raise GuythonRuntimeError("No window available. Create a window first.")
+        
+        try:
+            # Load and resize image
+            pil_image = Image.open(image_path)
+            if width and height:
+                pil_image = pil_image.resize((width, height), Image.Resampling.LANCZOS)
+            
+            photo = ImageTk.PhotoImage(pil_image)
+            
+            window = self.windows[self.current_window]
+            label = tk.Label(window, image=photo)
+            label.image = photo  # Keep a reference
+            label.place(x=x, y=y)
+            
+            widget_id = f"image_{self.widget_counter}"
+            self.widgets[widget_id] = label
+            self.widget_counter += 1
+            return widget_id
+            
+        except Exception as e:
+            raise GuythonRuntimeError(f"Error loading image '{image_path}': {e}")
+    
+    def set_widget_text(self, widget_id, text):
+        """Set text of a widget"""
+        if widget_id in self.widgets:
+            widget = self.widgets[widget_id]
+            if hasattr(widget, 'config'):
+                try:
+                    widget.config(text=text)
+                except:
+                    # For Entry widgets
+                    widget.delete(0, tk.END)
+                    widget.insert(0, text)
+    
+    def get_widget_text(self, widget_id):
+        """Get text from a widget"""
+        if widget_id in self.widgets:
+            widget = self.widgets[widget_id]
+            if hasattr(widget, 'get'):
+                return widget.get()
+            elif hasattr(widget, 'cget'):
+                return widget.cget('text')
+        return ""
+    
+    def show_message(self, title="Message", message="", msg_type="info"):
+        """Show a message box"""
+        if msg_type == "error":
+            messagebox.showerror(title, message)
+        elif msg_type == "warning":
+            messagebox.showwarning(title, message)
+        else:
+            messagebox.showinfo(title, message)
+    
+    def choose_color(self):
+        """Open color chooser dialog"""
+        color = colorchooser.askcolor()
+        return color[1] if color[1] else "#000000"
+    
+    def choose_file(self, file_types="*.*"):
+        """Open file chooser dialog"""
+        return filedialog.askopenfilename(filetypes=[("All files", file_types)])
+    
+    def set_window_color(self, color="#ffffff"):
+        """Set background color of current window"""
+        if self.current_window and self.current_window in self.windows:
+            self.windows[self.current_window].config(bg=color)
+    
+    def start_gui(self):
+        """Start the GUI event loop"""
+        if self.windows:
+            self.running = True
+            # Run in a separate thread to not block the interpreter
+            def run_mainloop():
+                while self.running and self.windows:
+                    try:
+                        for window in list(self.windows.values()):
+                            window.update()
+                        time.sleep(0.01)  # Small delay to prevent high CPU usage
+                    except:
+                        break
+            
+            gui_thread = threading.Thread(target=run_mainloop, daemon=True)
+            gui_thread.start()
+    
+    def wait_gui(self):
+        """Wait for GUI to close (blocking)"""
+        if self.windows:
+            list(self.windows.values())[0].mainloop()
+    
+    def _execute_callback(self, command):
+        """Execute a callback command (placeholder for now)"""
+        print(f"Button clicked: {command}")
 
 class ExpressionEvaluator:
     """Safe expression evaluator="""
@@ -219,6 +454,7 @@ class GuythonInterpreter:
         self.program_lines: List[str] = []
         self.goto_max_jumps = 1000  # Prevent infinite goto loops
         self.goto_jump_count = 0
+        self.gui = GuythonGUI()
         
     def set_debug_mode(self, enabled: bool):
         """Enable or disable debug mode"""
@@ -234,8 +470,8 @@ class GuythonInterpreter:
         result = ''
         i = 0
         while i < len(line):
-            if line[i] == '-':
-                end = line.find('-', i + 1)
+            if line[i] == '{':
+                end = line.find('}', i + 1)
                 if end != -1:
                     i = end + 1
                 else:
@@ -353,6 +589,18 @@ class GuythonInterpreter:
             self._handle_goto(code, importing)
             return
 
+        # GUI commands
+        elif code.split()[0] in ['createWindow', 'createButton', 'createLabel', 'createEntry', 
+                                 'createImage', 'showMessage', 'setWindowColor', 'startGui', 'waitGui']:
+            self._handle_gui_command(code, importing)
+
+        # File operations
+        elif code.startswith('read'):
+            self._handle_read(code, importing)
+
+        elif code.startswith('write'):
+            self._handle_write(code, importing)
+
         # Import
         elif code.startswith("import"):
             self._handle_import(code, importing)
@@ -424,6 +672,173 @@ class GuythonInterpreter:
 
         # Raise exception to trigger jump in run_program
         raise GuythonGotoException(target_line)
+
+    def _parse_gui_args(self, code: str) -> List[str]:
+        """Parse GUI command arguments, respecting quoted strings"""
+        args = []
+        current_arg = ""
+        in_quotes = False
+        quote_char = None
+        i = 0
+
+        while i < len(code):
+            char = code[i]
+
+            if not in_quotes:
+                if char in ['"', "'"]:
+                    in_quotes = True
+                    quote_char = char
+                    current_arg += char
+                elif char == ' ':
+                    if current_arg:
+                        args.append(current_arg)
+                        current_arg = ""
+                else:
+                    current_arg += char
+            else:
+                current_arg += char
+                if char == quote_char:
+                    in_quotes = False
+                    quote_char = None
+
+            i += 1
+
+        if current_arg:
+            args.append(current_arg)
+    
+        return args
+
+    def _handle_gui_command(self, code: str, importing: bool):
+        """Handle GUI-related commands"""
+        if importing:
+            return
+
+        # Parse arguments properly
+        args = self._parse_gui_args(code)
+        if not args:
+            return
+
+        command = args[0]
+
+        try:
+            if command == "createWindow":
+                # Syntax: createWindow "title" width height [resizable]
+                title = "Guython Window"
+                width, height = 400, 300
+                resizable = True
+
+                if len(args) >= 2:
+                    title = args[1].strip('"\'')
+                if len(args) >= 4:
+                    width = int(args[2])
+                    height = int(args[3])
+                if len(args) >= 5:
+                    resizable = args[4].lower() == "true"
+
+                window_id = self.gui.create_window(title, width, height, resizable)
+                print(f"Created window: {window_id}")
+
+            elif command == "createButton":
+                # Syntax: createButton "text" x y width height [command]
+                text = "Button"
+                x, y, width, height = 10, 10, 100, 30
+                command_func = None
+
+                if len(args) >= 2:
+                    text = args[1].strip('"\'')
+                if len(args) >= 6:
+                    x = int(args[2])
+                    y = int(args[3])
+                    width = int(args[4])
+                    height = int(args[5])
+                if len(args) >= 7:
+                    command_func = args[6]
+
+                widget_id = self.gui.create_button(text, x, y, width, height, command_func)
+                print(f"Created button: {widget_id}")
+
+            elif command == "createLabel":
+                # Syntax: createLabel "text" x y width height
+                text = "Label"
+                x, y, width, height = 10, 10, 100, 30
+
+                if len(args) >= 2:
+                    text = args[1].strip('"\'')
+                if len(args) >= 6:
+                    x = int(args[2])
+                    y = int(args[3])
+                    width = int(args[4])
+                    height = int(args[5])
+
+                widget_id = self.gui.create_label(text, x, y, width, height)
+                print(f"Created label: {widget_id}")
+
+            elif command == "createEntry":
+                # Syntax: createEntry x y width height ["placeholder"]
+                x, y, width, height = 10, 10, 100, 30
+                placeholder = ""
+
+                if len(args) >= 5:
+                    x = int(args[1])
+                    y = int(args[2])
+                    width = int(args[3])
+                    height = int(args[4])
+                if len(args) >= 6:
+                    placeholder = args[5].strip('"\'')
+
+                widget_id = self.gui.create_entry(x, y, width, height, placeholder)
+                print(f"Created entry: {widget_id}")
+
+            elif command == "createImage":
+                # Syntax: createImage "path" x y [width height]
+                if len(args) < 4:
+                    raise GuythonSyntaxError("createImage requires: path x y [width height]")
+
+                path = args[1].strip('"\'')
+                x = int(args[2])
+                y = int(args[3])
+                width = int(args[4]) if len(args) >= 5 else None
+                height = int(args[5]) if len(args) >= 6 else None
+
+                widget_id = self.gui.create_image(path, x, y, width, height)
+                print(f"Created image: {widget_id}")
+
+            elif command == "showMessage":
+                # Syntax: showMessage "title" "message" [type]
+                title = "Message"
+                message = ""
+                msg_type = "info"
+
+                if len(args) >= 2:
+                    title = args[1].strip('"\'')
+                if len(args) >= 3:
+                    message = args[2].strip('"\'')
+                if len(args) >= 4:
+                    msg_type = args[3]
+
+                self.gui.show_message(title, message, msg_type)
+
+            elif command == "setWindowColor":
+                # Syntax: setWindowColor "#ffffff"
+                color = "#ffffff"
+                if len(args) >= 2:
+                    color = args[1].strip('"\'')
+                self.gui.set_window_color(color)
+
+            elif command == "startGui":
+                self.gui.start_gui()
+                print("GUI started")
+
+            elif command == "waitGui":
+                self.gui.wait_gui()
+
+            else:
+                raise GuythonSyntaxError(f"Unknown GUI command: {command}")
+
+        except ValueError as e:
+            raise GuythonSyntaxError(f"Invalid parameters for {command}: {e}")
+        except Exception as e:
+            raise GuythonRuntimeError(f"GUI error in {command}: {e}")
     
     def _handle_function_definition(self, code: str, indent: int, importing: bool):
         """Handle function definition"""
@@ -625,6 +1040,193 @@ class GuythonInterpreter:
                 self.variables[var_name] = ""  # Handle EOF gracefully
             except KeyboardInterrupt:
                 raise  # Let keyboard interrupt propagate
+
+    def _format_file_size(self, size_bytes: int) -> str:
+        """Format file size in appropriate units"""
+        if size_bytes < 1024:
+            return f"{size_bytes} bytes"
+        elif size_bytes < 1024 * 1024:
+            return f"{size_bytes / 1024:.2f} KB"
+        elif size_bytes < 1024 * 1024 * 1024:
+            return f"{size_bytes / (1024 * 1024):.2f} MB"
+        else:
+            return f"{size_bytes / (1024 * 1024 * 1024):.2f} GB"
+
+    def _get_user_confirmation(self, message: str) -> bool:
+        """Get Y/N confirmation from user"""
+        try:
+            response = input(f"{message} (Y/N): ").strip().lower()
+            return response in ['y', 'yes']
+        except (EOFError, KeyboardInterrupt):
+            return False
+
+
+    def _handle_read(self, code: str, importing: bool):
+        """Handle read command with modifiers"""
+        # Check for flags
+        ignore_comments = '-ign' in code
+        show_lines = '-lines' in code
+        show_size = '-size' in code
+        check_exists = '-exists' in code
+
+        # Remove flags from code
+        for flag in ['-ign', '-lines', '-size', '-exists']:
+            code = code.replace(flag, '')
+        code = code.strip()
+
+        parts = code.split(None, 2)
+        if len(parts) != 3:
+            raise GuythonSyntaxError("Read syntax: read [-ign] [-lines] [-size] [-exists] {filePath} {fileName}.{fileExtension}")
+
+        _, file_path, filename = parts
+        full_path = os.path.join(file_path, filename) if file_path != '.' else filename
+
+        # Handle -exists flag
+        if check_exists:
+            exists = os.path.isfile(full_path)
+            if not importing:
+                print("true" if exists else "false")
+            return
+
+        # Handle -size flag
+        if show_size:
+            try:
+                size = os.path.getsize(full_path)
+                if not importing:
+                    print(self._format_file_size(size))
+                return
+            except FileNotFoundError:
+                raise GuythonRuntimeError(f"File not found: {full_path}")
+            except Exception as e:
+                raise GuythonRuntimeError(f"Error getting file size {full_path}: {e}")
+
+        # Read file content
+        try:
+            with open(full_path, 'r', encoding='utf-8') as f:
+                if show_lines:
+                    lines = f.readlines()
+                    # Remove newlines and apply comment stripping if needed
+                    if ignore_comments:
+                        lines = [self._strip_comments(line.rstrip('\n')) for line in lines]
+                    else:
+                        lines = [line.rstrip('\n') for line in lines]
+
+                    if not importing:
+                        for i, line in enumerate(lines, 1):
+                            print(f"{i}: {line}")
+                else:
+                    content = f.read()
+                    if ignore_comments:
+                        content = self._strip_comments(content)
+                    if not importing:
+                        print(content)
+
+            self._debug_print(f"Read file: {full_path}")
+        except FileNotFoundError:
+            raise GuythonRuntimeError(f"File not found: {full_path}")
+        except PermissionError:
+            raise GuythonRuntimeError(f"Permission denied reading file: {full_path}")
+        except Exception as e:
+            raise GuythonRuntimeError(f"Error reading file {full_path}: {e}")
+
+    def _handle_write(self, code: str, importing: bool):
+        """Handle write command with modifiers"""
+        # Check for flags
+        add_mode = '-add' in code
+        ignore_comments = '-ign' in code
+        create_only = '-create' in code
+
+        # Handle permissions flag
+        permissions = None
+        if '-permissions' in code:
+            # Extract permissions value
+            perm_match = re.search(r'-permissions\s+(\d+)', code)
+            if perm_match:
+                permissions = perm_match.group(1)
+                code = re.sub(r'-permissions\s+\d+', '', code)
+            else:
+                raise GuythonSyntaxError("Permissions syntax: -permissions <mode> (e.g., -permissions 755)")
+
+        # Remove other flags
+        for flag in ['-add', '-ign', '-create']:
+            code = code.replace(flag, '')
+        code = code.strip()
+
+        parts = code.split(None, 3)
+        if len(parts) != 4:
+            syntax_msg = "Write syntax: write [-add] [-ign] [-create] [-permissions <mode>] {filePath} {fileName}.{fileExtension} {fileContents}"
+            raise GuythonSyntaxError(syntax_msg)
+
+        _, file_path, filename, content = parts
+        full_path = os.path.join(file_path, filename) if file_path != '.' else filename
+
+        # Check if file exists and handle -create flag
+        file_exists = os.path.isfile(full_path)
+        if create_only and file_exists:
+            if not importing:
+                print(f"File already exists: {full_path}")
+            return
+
+        # Get confirmation if file exists and has content (and not in add mode)
+        if file_exists and not add_mode and not importing:
+            try:
+                # Check if file has content
+                with open(full_path, 'r', encoding='utf-8') as f:
+                    existing_content = f.read().strip()
+
+                if existing_content:  # File has content
+                    if not self._get_user_confirmation(f"File '{full_path}' already contains data. Overwrite?"):
+                        print("Write operation cancelled.")
+                        return
+            except Exception:
+                pass  # If we can't read the file, proceed with write attempt
+            
+        # Process content
+        if (content.startswith('"') and content.endswith('"')) or \
+           (content.startswith("'") and content.endswith("'")):
+            content = content[1:-1]
+        else:
+            try:
+                evaluator = ExpressionEvaluator(self.variables, SAFE_FUNCTIONS)
+                content = str(evaluator.evaluate(content))
+            except:
+                pass
+            
+        if ignore_comments:
+            content = self._strip_comments(content)
+
+        try:
+            # Create directory if it doesn't exist
+            dir_path = os.path.dirname(full_path)
+            if dir_path and not os.path.exists(dir_path):
+                os.makedirs(dir_path)
+
+            # Write file
+            mode = 'a' if add_mode else 'w'
+            with open(full_path, mode, encoding='utf-8') as f:
+                if add_mode:
+                    f.write('\n' + content)
+                else:
+                    f.write(content)
+
+            # Set permissions if specified
+            if permissions:
+                try:
+                    os.chmod(full_path, int(permissions, 8))  # Convert octal string to int
+                except ValueError:
+                    raise GuythonRuntimeError(f"Invalid permissions format: {permissions}")
+                except Exception as e:
+                    raise GuythonRuntimeError(f"Error setting permissions: {e}")
+
+            action = "appended to" if add_mode else "written"
+            if not importing:
+                print(f"File {action}: {full_path}")
+            self._debug_print(f"{'Appended to' if add_mode else 'Wrote'} file: {full_path}")
+
+        except PermissionError:
+            raise GuythonRuntimeError(f"Permission denied writing to file: {full_path}")
+        except Exception as e:
+            raise GuythonRuntimeError(f"Error writing file {full_path}: {e}")
     
     def _load_vars_from_file(self, filename: str) -> Dict[str, Any]:
         """Load variables from a Guython file without executing code"""

@@ -1,4 +1,4 @@
--This .gy file tests EVERY available function to make sure that Guython is working proper-
+{This .gy file tests EVERY available function to make sure that Guython is working proper}
 import example.gy
 
 c=0

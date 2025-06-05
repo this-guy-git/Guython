@@ -1,5 +1,5 @@
 -------------------------
----GUYTHON V1.0.0B2536---
+---GUYTHON V1.1.0B2556---
 -------------------------
 
 'ver' to show current Guython version.
@@ -20,27 +20,52 @@ variables are a string that can be set to a value such as a string or a number, 
 
 math operations are possible, such as "5+5" will return "10".
 
-comments are declared with a '-', for example "-this is a comment and will be ignored".
+comments are declared with a '{', and ended with a '}', for example "{this is a comment and will be ignored}".
 
+modifiers can be added to 'read' and 'write', valid modifiers listed below;
+-------------------------
+-ign            : ignores all guython comments, read
+-lines          : prints with line numbers, read
+-size           : prints with file size, read
+-exists         : checks if file exists, read
+-add            : writes to new line, write
+-create         : creates a file if it doesn't exist, write
+-permissions {n}: writes with permissions such as '755', write
 -------------------------
 in order of importance (what gets checked first):
 
-def    : syntax: (def{functionName}_), function: declares a function which can then be called upon with '{functionName}_'. Functions MUST have an '_' at then end of name or they will not be recognized
+def             : syntax: (def{functionName}_), function: declares a function which can then be called upon with '{functionName}_'. Functions MUST have an '_' at then end of name or they will not be recognized
+         
+while           : syntax: (while{variableName}|{number},{opperand},{variableName}|{number}), function: repeats following functions while the operation is true
+         
+if              : syntax: (if{variableName}|{number},{opperand},{variableName}|{number}), function: does any function if the if is true
+         
+goto            : syntax: (goto{lineNumber}), function: goes to the line declared
+         
+import          : syntax: (import{fileName}.gy|.guy) | (import {fileName}.gy|.guy), function: imports a .gy|.guy file's variables, ex: import {fileName}.gy, print {fileName}.{variableName}
+         
+input           : syntax: ({variableName}=input) | ({printinput}), function: saves the input or prints the input
+         
+print           : syntax: (print"str"|{variableName}|print"str"{variableName}), function: prints the following, additions: ',' using the ',' modifier in between two data adds a space between the two, print "str","wow" will print "str wow" and print "str""wow" will print "strwow"
+         
+guython         : syntax: (guython{fileName}.gy|.guy), function: runs the guython file using the interpreter
 
-while  : syntax: (while{variableName}|{number},{opperand},{variableName}|{number}), function: repeats following functions while the operation is true
+createWindow    : syntax: (createWindow "windowName" {width} {height}) function: creates a GUI window
 
-if     : syntax: (if{variableName}|{number},{opperand},{variableName}|{number}), function: does any function if the if is true
+setWindowColor  : syntax: (setWindowColor "{hexCode}") function: sets window background color
 
-goto   : syntax: (goto{lineNumber}), function: goes to the line declared
+waitGui         : syntax: (waitGui) function: halts until GUI is closed
 
-import : syntax: (import{fileName}.gy|.guy) | (import {fileName}.gy|.guy), function: imports a .gy|.guy file's variables, ex: import {fileName}.gy, print {fileName}.{variableName}
+createButton    : syntax: (createButton "buttonText" {x} {y} {width} {height} {command}) function: creates a clickable button
 
-input  : syntax: ({variableName}=input) | ({printinput}), function: saves the input or prints the input
+createLabel     : syntax: (createLabel "labelText" {x} {y} {width} {height}) function: creates a text label
 
-print  : syntax: (print"str"|{variableName}|print"str"{variableName}), function: prints the following, additions: ',' using the ',' modifier in between two data adds a space between the two, print "str","wow" will print "str wow" and print "str""wow" will print "strwow"
+createEntry     : syntax: (createEntry {x} {y} {width} {height} "placeHolderText") function: creates an entry field
 
-any easter egg
+createImage     : syntax: (createImage "path" {x} {y} {width} {height}) function: creates an image
 
-guython: syntax: (guython{fileName}.gy|.guy), function: runs the guython file using the interpreter
+showMessage     : syntax: (showMessage "messageTitle" "message" {type}) function: shows a message box
 
+read            : syntax: (read "path" {fileName}.{fileExtension} {modifier}) function: reads and prints a file
 
+write           : syntax: (read "path" {fileName}.{fileExtension} "content" {modifier}) function: writes to a file

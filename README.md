@@ -4,6 +4,8 @@ Guython is a ***VERY*** simple programming language created with Python.
 
 **PLEASE** read 'grammar.txt' as it contains all syntax on the current version of Guython.
 
+If you have any ***suggestions*** then add them to the issues with the **suggestion** tag!
+
 ### **Installation**
 Installing Guython is very easy!
 - Install the 'guython{ver}.zip' file.

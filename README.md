@@ -1,3 +1,5 @@
+![New Project](https://github.com/user-attachments/assets/0ccecb1b-3b13-48f7-9bcf-3b76433902b2)
+
 ### **GUYTHON**
 
 Guython is a ***VERY*** simple programming language created with Python.

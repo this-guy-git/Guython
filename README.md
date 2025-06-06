@@ -8,6 +8,8 @@ Guython is a ***VERY*** simple programming language created with Python.
 
 If you have any ***suggestions*** then add them to the issues with the **suggestion** tag!
 
+**IF YOU USE THE INSTALLER VERSION AND ARE IMPORTING FILES MAKE SURE THEM 'GUYTHON.EXE' IS IN THE SAME DIRECTORY AS *BOTH* FILES!***
+
 ### **Installation**
 Installing Guython is very easy!
 - Install the 'guython{ver}.zip' file.

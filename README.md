@@ -19,3 +19,6 @@ Installing Guython is very easy!
 ### **Running external files**
 Run an external file by placing your '.guy' or '.gy' file in the same directory as the 'guython.py' file, and then use the command 'guython {fileName}.gy/.guy' in the intepreter.
 OR run 'python guython.py {fileName}.gy/.guy' in the cmd prompt or terminal while in the same directory as the 'guython.py' file.
+
+### **GPD**
+The Guython Package Database or GPD is a package mangaer for Guython similar to Python's pip. Add your own Guython packages [here](https://github.com/this-guy-git/guython-packages)

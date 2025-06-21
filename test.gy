@@ -38,7 +38,7 @@ ifg==0
 ...c=c+1
 
 print"Please enter '1'"
-inp=input
+inp=input""
 ifinp==1
 .print"Inputs work!"
 .c=c+1
@@ -49,9 +49,21 @@ ifinp!=1
 print"Gotos work!"
 c=c+1
 
-ifc==8
+gpd install example-package
+gpd import example-package
+gpdin=input"Did the GPD import work?(y/n) "
+if gpdin=="y"
+.print"GPD install and import works!"
+.c=c+1
+if gpdin=="n"
+.goto62
+if gpdin!="n"
+.if gpdin!="y"
+..goto54
+
+ifc==9
 .print"Guython is operating properly!"
-ifc!=8
+ifc!=9
 .print"Guython is NOT working properly!"
 
 

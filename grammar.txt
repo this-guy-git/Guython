@@ -1,6 +1,6 @@
--------------------------
----GUYTHON V1.1.0B2556---
--------------------------
+--------------------------
+---GUYTHON V1.2.0B25620---
+--------------------------
 
 'ver' to show current Guython version.
 
@@ -56,7 +56,7 @@ setWindowColor  : syntax: (setWindowColor "{hexCode}") function: sets window bac
 
 waitGui         : syntax: (waitGui) function: halts until GUI is closed
 
-createButton    : syntax: (createButton "buttonText" {x} {y} {width} {height} {command}) function: creates a clickable button
+createButton    : syntax: (createButton "buttonText" {x} {y} {width} {height} {command}) function: creates a clickable button, the {command} area calls the defined function with that name
 
 createLabel     : syntax: (createLabel "labelText" {x} {y} {width} {height}) function: creates a text label
 
@@ -64,8 +64,20 @@ createEntry     : syntax: (createEntry {x} {y} {width} {height} "placeHolderText
 
 createImage     : syntax: (createImage "path" {x} {y} {width} {height}) function: creates an image
 
+setText         : syntax: (setText {labelName} "text"|var) function: sets the label to that text
+
+readText        : syntax: (readText {entryName} var) function: reads the entry's text and saves to a Variable
+
 showMessage     : syntax: (showMessage "messageTitle" "message" {type}) function: shows a message box
 
 read            : syntax: (read "path" {fileName}.{fileExtension} {modifier}) function: reads and prints a file
 
 write           : syntax: (read "path" {fileName}.{fileExtension} "content" {modifier}) function: writes to a file
+
+GPD (Guython Package Database) Commands
+-------------------------
+gpd pkgs        : Lists ALL Guython packages
+gpd install {p} : Installs the GPD package with that name
+gpd import {p}  : Imports the GPD package with that name
+gpd list        : Lists all the currently installed packages
+-------------------------

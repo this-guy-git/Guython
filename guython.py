@@ -1,3 +1,6 @@
+# Guython Package Manager
+from packages import GPD
+
 import re
 import math
 import os
@@ -13,7 +16,7 @@ from types import SimpleNamespace
 from typing import Dict, List, Tuple, Any, Optional, Union
 
 # Version constant
-VERSION = "v1.1.0b2556"
+VERSION = "v1.2.0b25620"
 
 # Maximum iterations for loops to prevent infinite loops
 MAX_LOOP_ITERATIONS = 10000
@@ -84,12 +87,13 @@ class GuythonGotoException(Exception):
 class GuythonGUI:
     """GUI manager for Guython"""
     
-    def __init__(self):
+    def __init__(self, interpreter=None):
         self.windows = {}
         self.widgets = {}
         self.current_window = None
         self.widget_counter = 0
         self.running = False
+        self.interpreter = interpreter
         
     def create_window(self, title="Guython Window", width=400, height=300, resizable=True):
         """Create a new window"""
@@ -151,18 +155,26 @@ class GuythonGUI:
         window.protocol("WM_DELETE_WINDOW", on_closing)
         return window_id
     
-    def create_button(self, text="Button", x=10, y=10, width=100, height=30, command=None):
-        """Create a button widget"""
+    def create_button(self, text="Button", x=10, y=10, width=100, height=30, command=None, interpreter=None):
         if not self.current_window or self.current_window not in self.windows:
             raise GuythonRuntimeError("No window available. Create a window first.")
-        
+
         window = self.windows[self.current_window]
         button = tk.Button(window, text=text, width=width//8, height=height//20)
         button.place(x=x, y=y, width=width, height=height)
-        
-        if command:
-            button.config(command=lambda: self._execute_callback(command))
-        
+
+        if command and interpreter:
+            def callback():
+                try:
+                    print(f"BUTTON PRESS: {command}")  # Debug
+                    # Create temporary code to execute
+                    temp_code = f"{command}"
+                    interpreter.run_line(temp_code)
+                except Exception as e:
+                    print(f"BUTTON ERROR: {e}")
+            
+            button.config(command=callback)
+
         widget_id = f"button_{self.widget_counter}"
         self.widgets[widget_id] = button
         self.widget_counter += 1
@@ -183,31 +195,32 @@ class GuythonGUI:
         return widget_id
     
     def create_entry(self, x=10, y=10, width=100, height=30, placeholder=""):
-        """Create a text entry widget"""
+        """Create a text entry widget with proper placeholder handling"""
         if not self.current_window or self.current_window not in self.windows:
             raise GuythonRuntimeError("No window available. Create a window first.")
-        
+
         window = self.windows[self.current_window]
         entry = tk.Entry(window)
         entry.place(x=x, y=y, width=width, height=height)
-        
+
         if placeholder:
             entry.insert(0, placeholder)
             entry.config(fg='grey')
-            
+            entry.placeholder = placeholder  # Store placeholder text
+
             def on_focus_in(event):
-                if entry.get() == placeholder:
+                if entry.get() == entry.placeholder:
                     entry.delete(0, tk.END)
                     entry.config(fg='black')
-            
+
             def on_focus_out(event):
-                if entry.get() == "":
-                    entry.insert(0, placeholder)
+                if not entry.get():
+                    entry.insert(0, entry.placeholder)
                     entry.config(fg='grey')
-            
+
             entry.bind('<FocusIn>', on_focus_in)
             entry.bind('<FocusOut>', on_focus_out)
-        
+
         widget_id = f"entry_{self.widget_counter}"
         self.widgets[widget_id] = entry
         self.widget_counter += 1
@@ -239,17 +252,41 @@ class GuythonGUI:
         except Exception as e:
             raise GuythonRuntimeError(f"Error loading image '{image_path}': {e}")
     
-    def set_widget_text(self, widget_id, text):
-        """Set text of a widget"""
+    def set_widget_text(self, widget_id: str, text: str):
+        """Set text of a widget with improved lookup"""
+        # First try exact match
         if widget_id in self.widgets:
             widget = self.widgets[widget_id]
-            if hasattr(widget, 'config'):
-                try:
+        else:
+            # Fallback to search by suffix (e.g., "label" matches "label_2")
+            matching = [k for k in self.widgets.keys() if k.endswith(widget_id)]
+            if not matching:
+                raise ValueError(f"Widget ID not found: {widget_id}")
+            widget = self.widgets[matching[0]]
+
+        text = str(text)  # Ensure we have a string
+
+        try:
+            if isinstance(widget, (tk.Label, tk.Button)):
+                widget.config(text=text)
+            elif isinstance(widget, tk.Entry):
+                widget.delete(0, tk.END)
+                widget.insert(0, text)
+                if hasattr(widget, 'placeholder') and widget.placeholder == text:
+                    widget.config(fg='grey')
+                else:
+                    widget.config(fg='black')
+            else:
+                # Generic fallback
+                if hasattr(widget, 'config') and 'text' in widget.config():
                     widget.config(text=text)
-                except:
-                    # For Entry widgets
+                elif hasattr(widget, 'delete') and hasattr(widget, 'insert'):
                     widget.delete(0, tk.END)
                     widget.insert(0, text)
+                else:
+                    raise ValueError(f"Cannot set text on widget type: {type(widget)}")
+        except tk.TclError as e:
+            raise ValueError(f"Error setting widget text: {e}")
     
     def get_widget_text(self, widget_id):
         """Get text from a widget"""
@@ -261,6 +298,43 @@ class GuythonGUI:
                 return widget.cget('text')
         return ""
     
+    def get_widget_value(self, widget_id: str) -> str:
+        """Get value from a widget (enhanced version)"""
+        if widget_id in self.widgets:
+            widget = self.widgets[widget_id]
+            try:
+                if isinstance(widget, tk.Entry):
+                    # Entry widgets
+                    value = widget.get()
+                    # Don't return placeholder text
+                    if widget.cget('fg') == 'grey':
+                        return ""
+                    return value
+                elif isinstance(widget, tk.Label):
+                    # Label widgets
+                    return widget.cget('text')
+                elif isinstance(widget, tk.Button):
+                    # Button widgets
+                    return widget.cget('text')
+                else:
+                    # Default case for other widgets
+                    if hasattr(widget, 'get'):
+                        return widget.get()
+                    elif hasattr(widget, 'cget'):
+                        return widget.cget('text')
+                    return ""
+            except tk.TclError:
+                return ""
+        return ""
+
+    def focus_widget(self, widget_id):
+        """Set focus to a specific widget"""
+        if widget_id in self.widgets:
+            try:
+                self.widgets[widget_id].focus_set()
+            except tk.TclError:
+                pass
+
     def show_message(self, title="Message", message="", msg_type="info"):
         """Show a message box"""
         if msg_type == "error":
@@ -311,53 +385,24 @@ class GuythonGUI:
         print(f"Button clicked: {command}")
 
 class ExpressionEvaluator:
-    """Safe expression evaluator="""
+    """Safe expression evaluator"""
     
     def __init__(self, variables: Dict[str, Any], functions: Dict[str, Any]):
         self.variables = variables
         self.functions = functions
+        self.gpd = GPD(self)
     
     def evaluate(self, expr: str) -> Any:
-        """Safely evaluate an expression"""
-        expr = expr.strip()
-        if not expr:
-            return None
-        
-        # Handle simple literals
-        if expr.startswith('"') and expr.endswith('"'):
-            return expr[1:-1]
-        if expr.startswith("'") and expr.endswith("'"):
-            return expr[1:-1]
-        
-        # Try to parse as a number
+        """Handle function calls with arguments"""
         try:
-            if '.' in expr:
-                return float(expr)
-            return int(expr)
-        except ValueError:
-            pass
-        
-        # Handle variables
-        if expr in self.variables:
-            return self.variables[expr]
-        
-        # Handle simple module variables (e.g., module.variable) - only if no operators
-        if '.' in expr and not any(op in expr for op in SAFE_OPERATIONS.keys()):
-            parts = expr.split('.')
-            if len(parts) == 2 and parts[0] in self.variables:
-                module = self.variables[parts[0]]
-                if hasattr(module, parts[1]):
-                    return getattr(module, parts[1])
-        
-        # For complex expressions, use a limited AST evaluation
-        try:
-            return self._evaluate_ast(expr)
+            expr = re.sub(r'(\w+)_', r'\1()', expr)
+            node = ast.parse(expr, mode='eval')
+            return self._eval_node(node.body)
         except Exception as e:
-            raise GuythonRuntimeError(f"Error evaluating expression '{expr}': {e}")
+            raise GuythonRuntimeError(f"Error evaluating expression: {e}")
     
     def _evaluate_ast(self, expr: str) -> Any:
         """Evaluate expression using AST"""
-        # Replace ^ with ** for Python compatibility
         expr = expr.replace('^', '**')
         
         try:
@@ -366,9 +411,32 @@ class ExpressionEvaluator:
         except Exception as e:
             raise GuythonRuntimeError(f"Invalid expression: {expr}")
     
-    def _eval_node(self, node) -> Any:
-        """Recursively evaluate AST nodes"""
-        if isinstance(node, ast.Constant):
+    def _eval_node(self, node):
+        """Handle function calls with arguments"""
+        if isinstance(node, ast.Call):
+            func = self._eval_node(node.func)
+            args = [self._eval_node(arg) for arg in node.args]
+            kwargs = {kw.arg: self._eval_node(kw.value) for kw in node.keywords}
+            
+            if callable(func):
+                try:
+                    return func(*args, **kwargs)
+                except Exception as e:
+                    raise GuythonRuntimeError(f"Error calling function: {e}")
+            raise GuythonRuntimeError(f"Not callable: {func}")
+        elif isinstance(node, ast.Attribute):
+            # Handle attribute access (module.function)
+            obj = self._eval_node(node.value)
+            if hasattr(obj, node.attr):
+                attr = getattr(obj, node.attr)
+                if callable(attr):
+                    # Return callable as-is - will be handled in ast.Call case
+                    return attr
+                else:
+                    return attr
+            else:
+                raise GuythonRuntimeError(f"Attribute not found: {node.attr}")
+        elif isinstance(node, ast.Constant):
             return node.value
         elif isinstance(node, ast.Constant):  # Python < 3.8 compatibility
             return node.n
@@ -450,11 +518,12 @@ class GuythonInterpreter:
         self.function_stack: List[Tuple[int, str]] = []
         self.current_line_number = 0
         self.debug_mode = False
-        # New attributes for goto functionality
         self.program_lines: List[str] = []
         self.goto_max_jumps = 1000  # Prevent infinite goto loops
         self.goto_jump_count = 0
-        self.gui = GuythonGUI()
+        self.gui = GuythonGUI(interpreter=self)
+        self.gpd = GPD(self)
+        self.functions = {}
         
     def set_debug_mode(self, enabled: bool):
         """Enable or disable debug mode"""
@@ -564,8 +633,51 @@ class GuythonInterpreter:
     def _process_command(self, code: str, indent: int, importing: bool):
         """Process a single command"""
 
+        if code.startswith('input"') and code.endswith('"'):
+            return self._handle_input(code, importing)
+        elif code.startswith("input'") and code.endswith("'"):
+            return self._handle_input(code, importing)
+        elif '=input"' in code and code.count('"') == 2:
+            return self._handle_input_assignment(code, importing)
+        elif "=input '" in code and code.count("'") == 2:
+            return self._handle_input_assignment(code, importing)
+
+        elif code.startswith("gpd "):
+            self._handle_gpd_command(code[4:])
+
+        elif '.' in code and '(' in code and ')' in code:
+            # Handle module.function(arg) calls
+            try:
+                module_path, rest = code.split('.', 1)
+                func_call = rest.split('(', 1)
+                func_name = func_call[0]
+                args_str = func_call[1].rstrip(')')
+                
+                if module_path in self.variables:
+                    module = self.variables[module_path]
+                    if hasattr(module, func_name):
+                        func = getattr(module, func_name)
+                        if callable(func):
+                            # Evaluate arguments
+                            evaluator = ExpressionEvaluator(self.variables, SAFE_FUNCTIONS)
+                            args = []
+                            kwargs = {}
+                            if args_str:
+                                for arg in args_str.split(','):
+                                    if '=' in arg:
+                                        key, value = arg.split('=', 1)
+                                        kwargs[key.strip()] = evaluator.evaluate(value.strip())
+                                    else:
+                                        args.append(evaluator.evaluate(arg.strip()))
+                            
+                            result = func(*args, **kwargs)
+                            if result is not None and not importing:
+                                print(result)
+            except Exception as e:
+                raise GuythonRuntimeError(f"Error in function call: {e}")
+
         # Function definition
-        if code.startswith('def'):
+        elif code.startswith('def'):
             self._handle_function_definition(code, indent, importing)
 
         # Control flow
@@ -589,10 +701,23 @@ class GuythonInterpreter:
             self._handle_goto(code, importing)
             return
 
+        # Guython command to execute another file
+        elif code.startswith("guython"):
+            self._handle_guython_command(code, importing)
+            return
+
         # GUI commands
         elif code.split()[0] in ['createWindow', 'createButton', 'createLabel', 'createEntry', 
                                  'createImage', 'showMessage', 'setWindowColor', 'startGui', 'waitGui']:
             self._handle_gui_command(code, importing)
+
+        # Read text from GUI widget
+        elif code.startswith('readText'):
+            self._handle_read_text(code, importing)
+
+        # Set text of GUI widget
+        elif code.startswith('setText'):
+            self._handle_set_text(code, importing)
 
         # File operations
         elif code.startswith('read'):
@@ -605,7 +730,6 @@ class GuythonInterpreter:
         elif code.startswith("import"):
             self._handle_import(code, importing)
 
-
         # Function call
         elif code.endswith('_'):
             self._handle_function_call(code, importing)
@@ -613,9 +737,6 @@ class GuythonInterpreter:
         # Input operations - FIXED: Check these before general assignment
         elif code.startswith('printinput') or code.startswith('print input'):
             self._handle_print_input(importing)
-
-        elif code.endswith('=input'):
-            self._handle_input_assignment(code, importing)
 
         # Variable assignment - check this after input operations
         elif '=' in code and not code.startswith('print') and code != "5+5=4":
@@ -652,6 +773,58 @@ class GuythonInterpreter:
                     raise
                 except Exception as e:
                     raise GuythonRuntimeError(f"Error evaluating expression: {e}")
+    
+    def _handle_gpd_command(self, command: str):
+        """Handle GPD package commands"""
+        parts = command.split(maxsplit=1)
+        if not parts:
+            raise GuythonSyntaxError("Invalid GPD command")
+
+        cmd = parts[0].lower()
+        args = parts[1] if len(parts) > 1 else ""
+
+        try:
+            if cmd == "install":
+                if not args:
+                    raise GuythonSyntaxError("Missing package name")
+                self.gpd.install(args.strip('"\''))
+            elif cmd == "import":
+                if not args:
+                    raise GuythonSyntaxError("Missing package name")
+                import_parts = args.split(maxsplit=2)
+                if len(import_parts) == 1:
+                    self.gpd.import_pkg(import_parts[0].strip('"\''))
+                elif len(import_parts) == 3 and import_parts[1] == "as":
+                    self.gpd.import_pkg(import_parts[0].strip('"\''), import_parts[2].strip('"\''))
+                else:
+                    raise GuythonSyntaxError("Invalid import syntax. Use: gpd import <package> [as <alias>]")
+            elif cmd == "list":
+                print("Installed packages:")
+                for pkg in self.gpd.list_packages():
+                    print(f"- {pkg} v{self.gpd.package_index[pkg]['version']}")
+            elif cmd == "uninstall":
+                if not args:
+                    raise GuythonSyntaxError("Missing package name")
+                self.gpd.uninstall(args.strip('"\''))
+            elif cmd == "pkgs":  # New command to list remote packages
+                try:
+                    remote_index = self.gpd._fetch_remote_index()
+                    print("Available packages in remote repository:")
+                    max_name_len = max(len(pkg) for pkg in remote_index.keys()) if remote_index else 0
+
+                    for pkg, data in remote_index.items():
+                        version = data.get('version', '?.?.?')
+                        description = data.get('description', 'No description available')
+                        # Format with consistent spacing
+                        print(f"- {pkg.ljust(max_name_len)} (v{version}): {description}")
+                except Exception as e:
+                    print(f"Error fetching remote packages: {e}")
+            else:
+                raise GuythonSyntaxError(f"Unknown GPD command: {cmd}")
+        except GuythonRuntimeError as e:
+            print(f"GPD Error: {e}")
+        except Exception as e:
+            print(f"Unexpected error: {str(e)}")
     
     def _handle_goto(self, code: str, importing: bool):
         """Handle goto statement"""
@@ -754,7 +927,7 @@ class GuythonInterpreter:
                 if len(args) >= 7:
                     command_func = args[6]
 
-                widget_id = self.gui.create_button(text, x, y, width, height, command_func)
+                widget_id = self.gui.create_button(text, x, y, width, height, command_func, self)
                 print(f"Created button: {widget_id}")
 
             elif command == "createLabel":
@@ -831,6 +1004,7 @@ class GuythonInterpreter:
 
             elif command == "waitGui":
                 self.gui.wait_gui()
+                
 
             else:
                 raise GuythonSyntaxError(f"Unknown GUI command: {command}")
@@ -839,20 +1013,91 @@ class GuythonInterpreter:
             raise GuythonSyntaxError(f"Invalid parameters for {command}: {e}")
         except Exception as e:
             raise GuythonRuntimeError(f"GUI error in {command}: {e}")
+
+    def _handle_set_text(self, code: str, importing: bool):
+        """Handle setText command to set text of GUI widgets"""
+        if importing:
+            return
+
+        # Parse the command properly
+        parts = code.split(maxsplit=2)
+        if len(parts) < 3:
+            raise GuythonSyntaxError("setText syntax: setText <widgetId> <text>")
+
+        _, widget_id, text_source = parts
+
+        # Debug output to verify widget ID
+        self._debug_print(f"Attempting to set text on widget: {widget_id}")
+        self._debug_print(f"Available widgets: {list(self.gui.widgets.keys())}")
+
+        # Evaluate the text source
+        try:
+            if (text_source.startswith('"') and text_source.endswith('"')) or \
+               (text_source.startswith("'") and text_source.endswith("'")):
+                text_value = text_source[1:-1]
+            else:
+                evaluator = ExpressionEvaluator(self.variables, SAFE_FUNCTIONS)
+                text_value = str(evaluator.evaluate(text_source))
+        except Exception as e:
+            raise GuythonRuntimeError(f"Error evaluating text: {e}")
+
+        # Set the widget text
+        try:
+            # Access the GUI manager's widgets directly
+            if widget_id in self.gui.widgets:
+                self.gui.set_widget_text(widget_id, text_value)
+                self._debug_print(f"Successfully set text of {widget_id} to: {text_value}")
+            else:
+                raise GuythonRuntimeError(f"Widget not found: {widget_id}. Available widgets: {list(self.gui.widgets.keys())}")
+        except Exception as e:
+            raise GuythonRuntimeError(f"Error setting widget text: {e}")
+
+    def _handle_read_text(self, code: str, importing: bool):
+        """Handle readText command to get text from GUI widgets"""
+        if importing:
+            return
+
+        # Parse: readText widgetId variableName
+        parts = self._parse_gui_args(code)
+        if len(parts) != 3:
+            raise GuythonSyntaxError("readText syntax: readText <widgetId> <variableName>")
+
+        _, widget_id, var_name = parts
+
+        # Validate variable name
+        if not self._validate_variable_name(var_name):
+            raise GuythonSyntaxError(f"Invalid variable name: '{var_name}'")
+
+        # Get text from widget
+        try:
+            text_value = self.gui.get_widget_value(widget_id)
+
+            # Try to convert to number if possible
+            try:
+                if text_value.replace('.', '', 1).isdigit():
+                    self.variables[var_name] = float(text_value)
+                elif text_value.lstrip('-').isdigit():
+                    self.variables[var_name] = int(text_value)
+                else:
+                    # Keep as string if not a number
+                    self.variables[var_name] = text_value
+            except (ValueError, AttributeError):
+                # Keep as string if conversion fails or if text_value is None
+                self.variables[var_name] = text_value if text_value is not None else ""
+
+            self._debug_print(f"Read text from {widget_id} into {var_name}: {self.variables[var_name]}")
+        except Exception as e:
+            raise GuythonRuntimeError(f"Error reading from widget {widget_id}: {e}")
     
     def _handle_function_definition(self, code: str, indent: int, importing: bool):
-        """Handle function definition"""
-        match = re.match(r'^def(\w+)_$', code)
-        if not match:
-            raise GuythonSyntaxError("Invalid function definition syntax. Use: def<functionName>_")
-        
-        func_name = match.group(1)
-        if not self._validate_variable_name(func_name):
-            raise GuythonSyntaxError(f"Invalid function name: {func_name}")
-            
+        """Store functions exactly as defined"""
+        if not code.startswith('def') or not code.endswith('_'):
+            raise GuythonSyntaxError("Function must be defined as 'def<name>_'")
+
+        func_name = code[3:]  # Get name after 'def'
+        self.functions[func_name] = []  # Store with exact name
         self.defining_function = (func_name, indent)
-        self.function_stack = []
-        self._debug_print(f"Defining function: {func_name}")
+        print(f"DEFINED: {func_name}")  # Debug
     
     def _handle_while(self, code: str, indent: int, importing: bool):
         """Handle while loop"""
@@ -912,36 +1157,40 @@ class GuythonInterpreter:
         module_vars = self._load_vars_from_file(filename)
         self.variables[module_name] = SimpleNamespace(**module_vars)
         self._debug_print(f"Imported module: {module_name}")
+
+    def _handle_guython_command(self, code: str, importing: bool):
+        """Handle guython command to execute another Guython file"""
+        if importing:
+            return
+
+        filename = code[8:].strip()  # Remove "guython " prefix
+
+        if not (filename.endswith('.gy') or filename.endswith('.guy')):
+            raise GuythonSyntaxError("Invalid file type. Given file must be .gy or .guy")
+
+        if not os.path.isfile(filename):
+            raise GuythonRuntimeError(f"File not found: {filename}")
+
+        try:
+            with open(filename, 'r') as f:
+                lines = f.readlines()
+                self.run_program(lines)
+        except Exception as e:
+            raise GuythonRuntimeError(f"Error executing file {filename}: {e}")
     
     def _handle_function_call(self, code: str, importing: bool):
-        """Handle function call with proper variable scoping"""
-        func_name = code[:-1]
-        
-        if func_name not in self.functions:
-            raise GuythonRuntimeError(f"Function '{func_name}_' not defined")
-            
-        self._debug_print(f"Calling function: {func_name}")
-        
-        # Save current state
-        saved_loop_stack = self.loop_stack.copy()
-        saved_if_stack = self.if_stack.copy()
-        
-        # Reset stacks for function execution
-        self.loop_stack = []
-        self.if_stack = []
-        
-        try:
-            # Execute function body
-            for fi, fline in self.functions[func_name]:
-                self.run_line('.' * fi + fline, importing)
-            
-            # Execute any remaining loops from the function
-            self.execute_remaining_loops()
-            
-        finally:
-            # Restore previous state
-            self.loop_stack = saved_loop_stack
-            self.if_stack = saved_if_stack
+        """Handle function calls with exact matching"""
+        print(f"CALLING: {code}")  # Debug
+
+        if code not in self.functions:
+            available = list(self.functions.keys())
+            raise GuythonRuntimeError(
+                f"Function '{code}' not found. Available: {available}"
+            )
+
+        # Execute function body
+        for indent, line in self.functions[code]:
+            self.run_line('.' * indent + line, importing)
     
     def _handle_assignment(self, code: str, importing: bool):
         """Handle variable assignment"""
@@ -1012,34 +1261,66 @@ class GuythonInterpreter:
                 raise  # Let keyboard interrupt propagate
     
     def _handle_input_assignment(self, code: str, importing: bool):
-        """Handle input assignment - FIXED"""
-        var_name = code[:-6].strip()  # Remove '=input'
+        """Handle input assignment with prompts"""
+        if importing:
+            return
+
+        # Handle both single and double quoted prompts
+        if '=input"' in code:
+            parts = code.split('=input"', 1)
+            var_name = parts[0].strip()
+            prompt = parts[1][:-1]  # Remove trailing quote
+        elif "=input '" in code:
+            parts = code.split("=input '", 1)
+            var_name = parts[0].strip()
+            prompt = parts[1][:-1]  # Remove trailing quote
+        else:
+            raise GuythonSyntaxError("Invalid input assignment syntax")
 
         if not self._validate_variable_name(var_name):
             raise GuythonSyntaxError(f"Invalid variable name: '{var_name}'")
 
-        if not importing:
-            try:
-                user_input = input()
-                # Always try to convert to number if possible for better comparisons
-                try:
-                    # Try integer first
-                    if '.' not in user_input and user_input.lstrip('-').isdigit():
-                        self.variables[var_name] = int(user_input)
-                    elif user_input.replace('.', '').replace('-', '').isdigit():
-                        self.variables[var_name] = float(user_input)
-                    else:
-                        # Keep as string if not a number
-                        self.variables[var_name] = user_input
-                except ValueError:
-                    # Keep as string if conversion fails
-                    self.variables[var_name] = user_input
+        try:
+            user_input = input(prompt)
 
-                self._debug_print(f"Input assigned to {var_name}: {self.variables[var_name]} (type: {type(self.variables[var_name]).__name__})")
-            except EOFError:
-                self.variables[var_name] = ""  # Handle EOF gracefully
-            except KeyboardInterrupt:
-                raise  # Let keyboard interrupt propagate
+            # Try to convert to number if possible
+            try:
+                if '.' in user_input and user_input.replace('.', '', 1).isdigit():
+                    self.variables[var_name] = float(user_input)
+                elif user_input.lstrip('-').isdigit():
+                    self.variables[var_name] = int(user_input)
+                else:
+                    self.variables[var_name] = user_input
+            except ValueError:
+                self.variables[var_name] = user_input
+
+            self._debug_print(f"Assigned to {var_name}: {self.variables[var_name]}")
+        except EOFError:
+            self.variables[var_name] = ""
+        except KeyboardInterrupt:
+            raise
+
+    def _handle_input(self, code: str, importing: bool):
+        """Handle standalone input with prompt"""
+        if importing:
+            return
+
+        if code.startswith('input"') and code.endswith('"'):
+            prompt = code[6:-1]
+        elif code.startswith("input'") and code.endswith("'"):
+            prompt = code[6:-1]
+        else:
+            prompt = ""
+
+        try:
+            user_input = input(prompt) if prompt else input()
+            print(user_input)  # Echo input like Python
+            return user_input
+        except EOFError:
+            print()  # Handle EOF
+            return ""
+        except KeyboardInterrupt:
+            raise
 
     def _format_file_size(self, size_bytes: int) -> str:
         """Format file size in appropriate units"""

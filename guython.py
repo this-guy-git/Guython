@@ -806,10 +806,10 @@ class GuythonInterpreter:
                 if not args:
                     raise GuythonSyntaxError("Missing package name")
                 self.gpd.uninstall(args.strip('"\''))
-            elif cmd == "pkgs":  # New command to list remote packages
+            elif cmd == "pkgs":
                 try:
                     remote_index = self.gpd._fetch_remote_index()
-                    print("Available packages in remote repository:")
+                    print("Available packages fetched from repository:")
                     max_name_len = max(len(pkg) for pkg in remote_index.keys()) if remote_index else 0
 
                     for pkg, data in remote_index.items():
@@ -819,8 +819,20 @@ class GuythonInterpreter:
                         print(f"- {pkg.ljust(max_name_len)} (v{version}): {description}")
                 except Exception as e:
                     print(f"Error fetching remote packages: {e}")
+            elif cmd == "help":
+                try:
+                    print("Available GPD commands:")
+                    print("""
+pkgs             -  fetches all packages available for download
+list             -  lists all install packages
+install {name}   -  installs package with that name
+uninstall {name} -  uninstalls the package with that name
+import {name}    -  imports the package with that name
+                    """)
+                except Exception as e:
+                    print(f"Unexpected error: {str(e)}")
             else:
-                raise GuythonSyntaxError(f"Unknown GPD command: {cmd}")
+                raise GuythonSyntaxError(f"Unknown GPD command: '{cmd}', use 'gpd help' to list all GPD commands")
         except GuythonRuntimeError as e:
             print(f"GPD Error: {e}")
         except Exception as e:

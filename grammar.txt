@@ -1,5 +1,5 @@
 --------------------------
----GUYTHON V1.2.0B25620---
+---GUYTHON V1.2.1B25624---
 --------------------------
 
 'ver' to show current Guython version.
@@ -80,4 +80,5 @@ gpd pkgs        : Lists ALL Guython packages
 gpd install {p} : Installs the GPD package with that name
 gpd import {p}  : Imports the GPD package with that name
 gpd list        : Lists all the currently installed packages
+gpd help        : Lists all GPD Commands
 -------------------------

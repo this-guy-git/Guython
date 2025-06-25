@@ -12,7 +12,7 @@ You can keep track of the status of any bugs [here](https://github.com/users/thi
 
 **IF YOU USE THE INSTALLER VERSION AND ARE IMPORTING FILES MAKE SURE THE 'GUYTHON.EXE' IS IN THE SAME DIRECTORY AS *BOTH* FILES!***
 
-**GUYTHON INSTALL IS LOCATED AT 'C:\Users\{UserName}\AppData\Local\Programs\Guython'
+**GUYTHON INSTALL IS LOCATED AT 'C:\Users\{UserName}\AppData\Local\Programs\Guython'**
 
 ### **Installation**
 Installing Guython is very easy!

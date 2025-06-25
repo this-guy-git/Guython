@@ -8,7 +8,11 @@ Guython is a ***VERY*** simple programming language created with Python.
 
 If you have any ***suggestions*** then add them to the issues with the **suggestion** tag!
 
-**IF YOU USE THE INSTALLER VERSION AND ARE IMPORTING FILES MAKE SURE THEM 'GUYTHON.EXE' IS IN THE SAME DIRECTORY AS *BOTH* FILES!***
+You can keep track of the status of any bugs [here](https://github.com/users/this-guy-git/projects/3/).
+
+**IF YOU USE THE INSTALLER VERSION AND ARE IMPORTING FILES MAKE SURE THE 'GUYTHON.EXE' IS IN THE SAME DIRECTORY AS *BOTH* FILES!***
+
+**GUYTHON INSTALL IS LOCATED AT 'C:\Users\{UserName}\AppData\Local\Programs\Guython'
 
 ### **Installation**
 Installing Guython is very easy!
@@ -23,4 +27,3 @@ OR run 'python guython.py {fileName}.gy/.guy' in the cmd prompt or terminal whil
 ### **GPD**
 The Guython Package Database or GPD is a package mangaer for Guython similar to Python's pip. Add your own Guython packages [here](https://github.com/this-guy-git/guython-packages).
 
-You can keep track of the status of any bugs [here](https://github.com/users/this-guy-git/projects/3/).

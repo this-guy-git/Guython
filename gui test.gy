@@ -1,0 +1,11 @@
+defmyButtonFunction_
+.readText entry_0 userName
+.setText label_3 userName
+
+createWindow "My App" 400 300
+createEntry 10 10 200 30 "Enter your name"
+createButton "Click Me" 10 50 200 30 myButtonFunction_
+createLabel "Output:" 10 100 200 30
+createLabel "Your Name" 10 120 200 30
+
+startGui

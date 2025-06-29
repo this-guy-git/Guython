@@ -1,0 +1,70 @@
+{This .gy file tests EVERY available function to make sure that Guython is working proper}
+import example.gy
+
+c=0
+a=0
+
+if example.b==2
+.print"Imports work!"
+.c=c+1
+
+deftest_
+.print"Functions work!"
+.c=c+1
+
+test_
+
+a=0
+whilea<5
+.a=a+1
+
+
+print"Variables work!"
+c=c+1
+
+ifa>=5
+.print"Variable math works!"
+.c=c+1
+.print"While loops work!"
+.c=c+1
+
+g=0
+ifg==0
+.g=g+1
+.ifg==1
+..g=g+1
+..ifg==2
+...print"Multi indent works!"
+...c=c+1
+
+print"Please enter '1'"
+inp=input""
+ifinp==1
+.print"Inputs work!"
+.c=c+1
+.goto49
+ifinp!=1
+.goto40
+
+print"Gotos work!"
+c=c+1
+
+gpd install example-package
+gpd import example-package
+gpdin=input"Did the GPD import work?(y/n) "
+if gpdin=="y"
+.print"GPD install and import works!"
+.c=c+1
+if gpdin=="n"
+.goto62
+if gpdin!="n"
+.if gpdin!="y"
+..goto54
+
+ifc==9
+.print"Guython is operating properly!"
+ifc!=9
+.print"Guython is NOT working properly!"
+
+
+

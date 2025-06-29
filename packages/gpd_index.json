@@ -1,0 +1,22 @@
+{
+  "time": {
+    "version": "1.0.0",
+    "main": "time",
+    "language": "python",
+    "files": [
+      "time.py",
+      "README.md",
+      "manifest.gy"
+    ]
+  },
+  "example-package": {
+    "version": "1.0.0",
+    "main": "main",
+    "language": "guython",
+    "files": [
+      "main.gy",
+      "manifest.gy",
+      "README.md"
+    ]
+  }
+}

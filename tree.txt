@@ -1,0 +1,53 @@
+guython2
+│   example.gy
+│   gui test.gy
+│   run.py
+│   test.gy
+│   
+├───bin
+│       bin.sh
+│       
+├───guython
+│   │   main.py
+│   │   __init__.py
+│   │   
+│   ├───core
+│   │   │   constants.py
+│   │   │   errors.py
+│   │   │   evaluator.py
+│   │   │   gui.py
+│   │   │   interpreter.py
+│   │   │   
+│   │   └───__pycache__
+│   │           constants.cpython-312.pyc
+│   │           errors.cpython-312.pyc
+│   │           evaluator.cpython-312.pyc
+│   │           gui.cpython-312.pyc
+│   │           interpreter.cpython-312.pyc
+│   │           __init__.cpython-312.pyc
+│   │           
+│   ├───packages
+│   │   │   GPD.py
+│   │   │   
+│   │   └───__pycache__
+│   │           GPD.cpython-312.pyc
+│   │           packages.cpython-312.pyc
+│   │           
+│   ├───utils
+│   │       fileio.py
+│   │       
+│   └───__pycache__
+│           __init__.cpython-312.pyc
+│           
+└───packages
+    │   gpd_index.json
+    │   
+    ├───example-package
+    │       main.gy
+    │       manifest.gy
+    │       README.md
+    │       
+    └───time
+            manifest.gy
+            README.md
+            time.py

@@ -2,7 +2,7 @@
 
 ### **GUYTHON**
 
-Guython is a ***VERY*** simple programming language created with Python.
+Guython is a simple programming language created with Python.
 
 **PLEASE** read 'grammar.txt' as it contains all syntax on the current version of Guython.
 

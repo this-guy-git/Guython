@@ -2,6 +2,7 @@ import os
 import re
 from types import SimpleNamespace
 from typing import Dict, List, Tuple, Any, Optional
+import sys
 
 from .errors import (
     GuythonError,
@@ -18,6 +19,9 @@ from ..packages.GPD import GPD
 
 class GuythonInterpreter:
     """Main Guython interpreter class"""
+
+    import os
+    import sys
     
     def __init__(self):
         self.variables: Dict[str, Any] = {}
@@ -240,45 +244,55 @@ class GuythonInterpreter:
     def run_line(self, line: str, importing: bool = False, line_number: int = 0):
         """Execute a single line of Guython code"""
         line = line.rstrip("\n")
+        original_line = line  # Keep original for debugging
         line = self._strip_comments(line)
         self.current_line_number = line_number
-        
+
         if not line.strip():
             return
-        
+
         try:
             indent, code = self._get_indent_level(line)
-            self._debug_print(f"Line {line_number}: indent={indent}, code='{code}'")
-            
-            # Close blocks based on indentation
-            self._close_blocks(indent)
-            
-            # Handle function definition
+            #print(f"DEBUG: Line {line_number}: indent={indent}, code='{code}', defining_function={self.defining_function}")
+
+            # Handle function definition body collection FIRST
             if self.defining_function:
-                if indent > self.defining_function[1]:
+                func_name, func_indent = self.defining_function
+                #print(f"DEBUG: In function definition mode for '{func_name}', func_indent={func_indent}, current_indent={indent}")
+
+                if indent > func_indent:
+                    # This line is part of the function body
                     self.function_stack.append((indent, code))
+                    #print(f"DEBUG: Added to function body: ({indent}, '{code}')")
                     return
                 else:
-                    self.functions[self.defining_function[0]] = self.function_stack
+                    # Function definition is complete
+                    self.functions[func_name]['body'] = self.function_stack.copy()
+                    #print(f"DEBUG: Function '{func_name}' body complete: {self.function_stack}")
                     self.defining_function = None
                     self.function_stack = []
-            
+                    # IMPORTANT: Continue processing the current line normally
+                    # Don't return here - let it fall through to _process_command
+
+            # Close blocks based on indentation
+            self._close_blocks(indent)
+
             # Process the command
             self._process_command(code, indent, importing)
-            
+
         except GuythonGotoException:
             # Re-raise goto exceptions to be handled by run_program
             raise
         except GuythonError as e:
             if not importing:
-                stripped_line = line.rstrip('\n')
+                stripped_line = original_line.rstrip('\n')
                 first_char_index = len(stripped_line) - len(stripped_line.lstrip(' '))
                 print(f"[Line {line_number}] {stripped_line}")
                 print(" " * (len(f"[Line {line_number}] ") + first_char_index) + "^")
                 print(f"GuythonError: {e}")
         except Exception as e:
             if not importing:
-                stripped_line = line.rstrip('\n')
+                stripped_line = original_line.rstrip('\n')
                 first_char_index = len(stripped_line) - len(stripped_line.lstrip(' '))
                 print(f"[Line {line_number}] {stripped_line}")
                 print(" " * (len(f"[Line {line_number}] ") + first_char_index) + "^")
@@ -286,192 +300,100 @@ class GuythonInterpreter:
 
     def _process_command(self, code: str, indent: int, importing: bool):
         """Process a single command"""
+        #print(f"DEBUG: _process_command called with code='{code}'")
+        #print(f"DEBUG: code.endswith('_') = {code.endswith('_')}")
+        #print(f"DEBUG: code ends with: '{code[-5:]}' (last 5 chars)")
+
         # Apply aliases
         for alias, replacement in self.aliases.items():
             if code.startswith(alias + " "):
                 code = code.replace(alias, replacement, 1)
-        
+
         # Handle eval command
         if code.startswith('eval '):
+            #print("DEBUG: Handling eval command")
             self._handle_eval_command(code, importing)
             return
-        
+
         if code.startswith('input"') and code.endswith('"'):
+            #print("DEBUG: Handling input with double quotes")
             return self._handle_input(code, importing)
         elif code.startswith("input'") and code.endswith("'"):
+            #print("DEBUG: Handling input with single quotes")
             return self._handle_input(code, importing)
         elif '=input"' in code and code.count('"') == 2:
+            #print("DEBUG: Handling input assignment with double quotes")
             return self._handle_input_assignment(code, importing)
         elif "=input '" in code and code.count("'") == 2:
+            #print("DEBUG: Handling input assignment with single quotes")
             return self._handle_input_assignment(code, importing)
         elif code.startswith("alias "):
+            #print("DEBUG: Handling alias")
             self._handle_alias(code)
         elif code.startswith("else"):
+            #print("DEBUG: Handling else")
             self._handle_else(indent)
-
+        elif code.startswith("exit_"):
+            #print("DEBUG: Handling exit")
+            self.os._exit(0)
+            self.sys.exit(0)
         elif code.startswith("gpd "):
+            #print("DEBUG: Handling gpd command")
             self._handle_gpd_command(code[4:])
-
-        elif '.' in code and '(' in code and ')' in code:
-            # Handle module.function(arg) calls
-            try:
-                module_path, rest = code.split('.', 1)
-                func_call = rest.split('(', 1)
-                func_name = func_call[0]
-                args_str = func_call[1].rstrip(')')
-                
-                if module_path in self.variables:
-                    module = self.variables[module_path]
-                    if hasattr(module, func_name):
-                        func = getattr(module, func_name)
-                        if callable(func):
-                            # Evaluate arguments
-                            evaluator = ExpressionEvaluator(self.variables, SAFE_FUNCTIONS)
-                            args = []
-                            kwargs = {}
-                            if args_str:
-                                for arg in args_str.split(','):
-                                    if '=' in arg:
-                                        key, value = arg.split('=', 1)
-                                        kwargs[key.strip()] = evaluator.evaluate(value.strip())
-                                    else:
-                                        args.append(evaluator.evaluate(arg.strip()))
-                            
-                            result = func(*args, **kwargs)
-                            if result is not None and not importing:
-                                print(result)
-            except Exception as e:
-                raise GuythonRuntimeError(f"Error in function call: {e}")
-
-        elif code.strip().lower().startswith("ngi") or code.strip().lower().startswith("nig"):
-            import subprocess
-            import sys
-            import os
-            import shlex
-        
-            parts = shlex.split(code)  # splits into ['ngi', '-s', 'print"hi"'] etc.
-        
-            script_path = os.path.abspath("run.py")
-        
-            if not os.path.exists(script_path):
-                print("Error: run.py not found.")
-                return
-        
-            if len(parts) == 1:
-                # No flags — just open interactive Guython
-                print("Starting new Guython instance...")
-                if sys.platform.startswith("win"):
-                    subprocess.Popen(["start", "cmd", "/k", "python3", script_path], shell=True)
-                else:
-                    subprocess.Popen(["x-terminal-emulator", "-e", f"python3 {script_path}"], shell=True)
-        
-            elif len(parts) >= 3 and parts[1] == "-s":
-                snippet = parts[2]
-                print(f"Starting new Guython instance with script: {snippet}")
-        
-                # Write the snippet to a temp .gy file
-                import tempfile
-                with tempfile.NamedTemporaryFile(delete=False, suffix=".gy", mode='w', encoding='utf-8') as temp:
-                    temp.write(snippet)
-                    temp_filename = temp.name
-        
-                if sys.platform.startswith("win"):
-                    subprocess.Popen(["start", "cmd", "/k", "python3", script_path, temp_filename], shell=True)
-                else:
-                    subprocess.Popen(["x-terminal-emulator", "-e", f"python3 {script_path} {temp_filename}"], shell=True)
-        
-            else:
-                print("Invalid ngi usage. Try:")
-                print("  ngi           → opens a new Guython terminal")
-                print("  ngi -s '...'  → runs one line of Guython in a new terminal")
-        
-
-        # Function definition
         elif code.startswith('def'):
+            #print("DEBUG: Handling function definition")
             self._handle_function_definition(code, indent, importing)
-
-        # Control flow
         elif code.startswith('while'):
+            #print("DEBUG: Handling while loop")
             self._handle_while(code, indent, importing)
-
         elif code.startswith('if'):
+            #print("DEBUG: Handling if statement")
             self._handle_if(code, indent, importing)
-
-        # Add to loop block
         elif self.loop_stack and indent > self.loop_stack[-1][1]:
+            #print("DEBUG: Adding to loop block")
             self.loop_stack[-1][2].append((indent, code))
-
-        # Skip if we're in a false if block - CHECK THIS BEFORE GOTO
         elif self.if_stack and not self.if_stack[-1][0] and indent > self.if_stack[-1][1]:
+            #print("DEBUG: Skipping line due to false if condition")
             self._debug_print(f"Skipping line due to false if condition: {code}")
             return
-
-        # Goto statement - NOW checked after if-block logic
         elif code.startswith('goto'):
+            #print("DEBUG: Handling goto")
             self._handle_goto(code, importing)
             return
-
-        # Guython command to execute another file
         elif code.startswith("guython"):
+            #print("DEBUG: Handling guython command")
             self._handle_guython_command(code, importing)
             return
-
-        # GUI commands
-        elif code.split()[0] in ['createWindow', 'createButton', 'createLabel', 'createEntry', 
-                                 'createImage', 'showMessage', 'setWindowColor', 'startGui', 'waitGui']:
-            self._handle_gui_command(code, importing)
-
-        # Read text from GUI widget
-        elif code.startswith('readText'):
-            self._handle_read_text(code, importing)
-
-        # Set text of GUI widget
-        elif code.startswith('setText'):
-            self._handle_set_text(code, importing)
-
-        # File operations
-        elif code.startswith('read'):
-            self._handle_read(code, importing)
-
-        elif code.startswith('write'):
-            self._handle_write(code, importing)
-
-        # Import
-        elif code.startswith("import"):
-            self._handle_import(code, importing)
-
-        # Function call
-        elif code.endswith('_'):
+        # Check for function call pattern: word_ [args] or just word_
+        elif ('_ ' in code or code.endswith('_')) and not any(code.startswith(cmd) for cmd in ['def', 'while', 'if', 'print', 'input', 'alias', 'else', 'exit', 'gpd', 'goto', 'guython', 'read', 'write', 'import']):
+            #print(f"DEBUG: FOUND FUNCTION CALL! code='{code}'")
             self._handle_function_call(code, importing)
-
-        # Input operations - FIXED: Check these before general assignment
+            return
         elif code.startswith('printinput') or code.startswith('print input'):
+            #print("DEBUG: Handling print input")
             self._handle_print_input(importing)
-
-        # Variable assignment - check this after input operations
         elif '=' in code and not code.startswith('print') and code != "5+5=4":
+            #print("DEBUG: Handling assignment")
             self._handle_assignment(code, importing)
-
-        # Print statement
         elif code.startswith('print'):
+            #print("DEBUG: Handling print statement")
             self._handle_print(code, importing)
-            
         elif code == "5+5=4":
+            #print("DEBUG: Handling 5+5=4 easter egg")
             if not importing:
                 print("chatgpt actually said this bruh 😭")
-
         elif code == "9+10":
+            #print("DEBUG: Handling 9+10 easter egg")
             if not importing:
                 print("21")
                 print("you stupid")
                 print("its 19")
-
         elif code == "ver" and "=" not in code:
+            #print("DEBUG: Handling version command")
             if not importing:
                 print("Guython", VERSION)
-
-        # Check for array access before expression evaluation
         elif '[' in code and ']' in code and '=' not in code:
+            #print("DEBUG: Handling array access")
             if not importing:
                 try:
                     result = self._handle_array_access(code)
@@ -480,9 +402,8 @@ class GuythonInterpreter:
                         self.last_output = result
                 except GuythonError:
                     raise
-
-        # Expression evaluation
         else:
+            #print("DEBUG: Falling back to expression evaluation")
             if not importing:
                 try:
                     evaluator = ExpressionEvaluator(self.variables, SAFE_FUNCTIONS)
@@ -823,30 +744,49 @@ import {name}    -  imports the package with that name
             raise GuythonRuntimeError(f"Error reading from widget {widget_id}: {e}")
     
     def _handle_function_definition(self, code: str, indent: int, importing: bool):
-        """Store functions exactly as defined"""
-        if not code.startswith('def') or not code.endswith('_'):
-            raise GuythonSyntaxError("Function must be defined as 'def<name>_'")
+        """Store function name, args, and prepare to capture function body"""
+        #print(f"DEBUG: Handling function definition: {code}")
 
-        func_name = code[3:]  # Get name after 'def'
-        self.functions[func_name] = []  # Store with exact name
+        # Must start with 'def' and have an underscore separating name and args
+        if not code.startswith('def') or '_' not in code:
+            raise GuythonSyntaxError("Function must be defined as 'def<name>_ [args]'")
+
+        # Extract everything after 'def'
+        after_def = code[3:].strip()  # e.g. 'foo_ x, y'
+        #print(f"DEBUG: after_def = '{after_def}'")
+
+        # Split name and args by first underscore '_'
+        if '_' not in after_def:
+            raise GuythonSyntaxError("Function definition missing trailing underscore")
+
+        func_name, *rest = after_def.split('_', 1)
+        func_name = func_name.strip()
+        args_str = rest[0].strip() if rest else ""
+        #print(f"DEBUG: func_name = '{func_name}', args_str = '{args_str}'")
+
+        # Parse args (comma separated)
+        args = [arg.strip() for arg in args_str.split(',')] if args_str else []
+        #print(f"DEBUG: parsed args = {args}")
+
+        # Validate function name
+        if not self._validate_variable_name(func_name):
+            raise GuythonSyntaxError(f"Invalid function name: '{func_name}'")
+
+        # Validate argument names
+        for arg in args:
+            if arg and not self._validate_variable_name(arg):
+                raise GuythonSyntaxError(f"Invalid argument name: '{arg}'")
+
+        # Store function as dict with args and empty body list
+        self.functions[func_name] = {
+            'args': args,
+            'body': []
+        }
+
         self.defining_function = (func_name, indent)
-        print(f"DEFINED: {func_name}")  # Debug
-    
-    def _handle_while(self, code: str, indent: int, importing: bool):
-        """Handle while loop"""
-        # Handle both "while condition" and "whilecondition" syntax
-        if code.startswith('while '):
-            condition = code[6:].strip()
-        elif code.startswith('while'):
-            condition = code[5:].strip()
-        else:
-            condition = ""
-            
-        if not condition:
-            raise GuythonSyntaxError("While loop missing condition")
-            
-        self.loop_stack.append((condition, indent, []))
-        self._debug_print(f"Starting while loop with condition: {condition}")
+        self.function_stack = []  # Reset function stack
+        #if not importing:
+            #print(f"DEFINED: {func_name} with args {args}")
 
     def _handle_alias(self, code: str):
         # Example: alias p = print
@@ -945,18 +885,136 @@ import {name}    -  imports the package with that name
             raise GuythonRuntimeError(f"Error executing file {filename}: {e}")
     
     def _handle_function_call(self, code: str, importing: bool):
-        """Handle function calls with exact matching"""
-        print(f"CALLING: {code}")  # Debug
+        """Handle calls like 'funcname_ arg1, arg2'"""
+        #print(f"DEBUG: Handling function call: '{code}'")
 
-        if code not in self.functions:
+        # Split code into function name and arg string
+        if ' ' in code:
+            func_name, args_str = code.split(' ', 1)
+            args_str = args_str.strip()
+            # Split arguments by comma, but be careful with whitespace
+            if args_str:
+                passed_args = [arg.strip() for arg in args_str.split(',')]
+            else:
+                passed_args = []
+        else:
+            func_name = code.strip()
+            passed_args = []
+
+        #print(f"DEBUG: func_name='{func_name}', passed_args={passed_args}")
+
+        # Remove trailing underscore from func_name
+        if not func_name.endswith('_'):
+            raise GuythonRuntimeError(f"Function call must end with '_', got: {func_name}")
+        func_name = func_name[:-1]
+
+        #print(f"DEBUG: Looking for function '{func_name}' in functions: {list(self.functions.keys())}")
+
+        # Check function exists
+        if func_name not in self.functions:
             available = list(self.functions.keys())
-            raise GuythonRuntimeError(
-                f"Function '{code}' not found. Available: {available}"
-            )
+            raise GuythonRuntimeError(f"Function '{func_name}' not found. Available: {available}")
 
-        # Execute function body
-        for indent, line in self.functions[code]:
-            self.run_line('.' * indent + line, importing)
+        func = self.functions[func_name]
+        declared_args = func['args']
+        body = func['body']
+
+        #print(f"DEBUG: Function found - declared_args={declared_args}, body={body}")
+
+        # Check argument count
+        if len(passed_args) != len(declared_args):
+            raise GuythonRuntimeError(f"Function '{func_name}' expects {len(declared_args)} args, got {len(passed_args)}")
+
+        # Save current variable state
+        saved_vars = self.variables.copy()
+
+        try:
+            # Evaluate passed arguments and bind to parameter names
+            for i, (param_name, arg_expr) in enumerate(zip(declared_args, passed_args)):
+                #print(f"DEBUG: Processing argument {i}: param_name='{param_name}', arg_expr='{arg_expr}'")
+                try:
+                    # Simple argument evaluation
+                    arg_value = self._evaluate_argument(arg_expr)
+                    #print(f"DEBUG: Evaluated '{arg_expr}' to {arg_value}")
+
+                    # Bind to parameter name in current scope
+                    self.variables[param_name] = arg_value
+                    #print(f"DEBUG: Bound parameter {param_name} = {arg_value}")
+                except Exception as e:
+                    print(f"DEBUG: Error evaluating argument: {e}")
+                    raise GuythonRuntimeError(f"Error evaluating argument {i+1} ({arg_expr}): {e}")
+
+            #print(f"DEBUG: About to execute function body with {len(body)} lines")
+            # Execute function body
+            for indent, line in body:
+                #print(f"DEBUG: Executing function body line: indent={indent}, line='{line}'")
+                # Reconstruct the line with proper indentation
+                full_line = '.' * indent + line
+                #print(f"DEBUG: Reconstructed line: '{full_line}'")
+                self.run_line(full_line, importing=importing, line_number=self.current_line_number)
+
+            #print(f"DEBUG: Function '{func_name}' execution complete")
+
+        finally:
+            # Restore original variable state (simple local scope simulation)
+            # Keep any global variables that were modified, but remove parameters
+            for param_name in declared_args:
+                if param_name in saved_vars:
+                    self.variables[param_name] = saved_vars[param_name]
+                elif param_name in self.variables:
+                    del self.variables[param_name]
+
+    def _evaluate_argument(self, arg_expr: str):
+        """Simple argument evaluation that handles common cases"""
+        arg_expr = arg_expr.strip()
+        #print(f"DEBUG: _evaluate_argument called with '{arg_expr}'")
+
+        # String literals
+        if (arg_expr.startswith('"') and arg_expr.endswith('"')) or \
+           (arg_expr.startswith("'") and arg_expr.endswith("'")):
+            result = arg_expr[1:-1]
+            #print(f"DEBUG: String literal result: '{result}'")
+            return result
+
+        # Number literals
+        try:
+            if '.' in arg_expr:
+                result = float(arg_expr)
+                #print(f"DEBUG: Float literal result: {result}")
+                return result
+            else:
+                result = int(arg_expr)
+                #print(f"DEBUG: Int literal result: {result}")
+                return result
+        except ValueError:
+            pass
+        
+        # Variable lookup
+        if arg_expr in self.variables:
+            result = self.variables[arg_expr]
+            #print(f"DEBUG: Variable lookup result: '{arg_expr}' = {result}")
+            return result
+
+        # Array literals
+        if arg_expr.startswith('[') and arg_expr.endswith(']'):
+            try:
+                result = self._parse_array_literal(arg_expr)
+                print(f"DEBUG: Array literal result: {result}")
+                return result
+            except:
+                pass
+            
+        #print(f"DEBUG: Falling back to expression evaluator for '{arg_expr}'")
+        # Fall back to expression evaluator for complex expressions
+        try:
+            evaluator = ExpressionEvaluator(self.variables, SAFE_FUNCTIONS)
+            result = evaluator.evaluate(arg_expr)
+            #print(f"DEBUG: Expression evaluator result: {result}")
+            return result
+        except Exception as e:
+            #print(f"DEBUG: Expression evaluator failed: {e}")
+            raise GuythonRuntimeError(f"Cannot evaluate argument '{arg_expr}': {e}")
+
     
     def _handle_assignment(self, code: str, importing: bool):
         """Handle variable assignment"""

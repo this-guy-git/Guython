@@ -1,0 +1,10 @@
+name=input"Your name: "
+age=input"Your age: "
+col=input"Your fav colour:"
+
+defabout_ nam, ag, colour
+.print"Your name is " nam
+.print"Your age is " ag
+.print"Your favourite colour is " colour
+
+about_ name, age, col

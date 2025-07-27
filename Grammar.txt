@@ -1,0 +1,90 @@
+--------------------------
+---GUYTHON V2.1.0B25727---
+--------------------------
+
+'ver' to show current Guython version.
+
+'exit' to exit the console.
+
+'var' to show all currently declared variables.
+
+'debug' to enter debug mode.
+
+spaces are optional between any function: print"abc" and print "abc" return the same.
+
+opperand is a comparison, such as "<", ">", "and", "or", or, "not".
+
+indentation is a '.', indentation MUST be used afer a while or if, anything not in the indentation is not part of the while or if.
+
+variables are a string that can be set to a value such as a string or a number, variables can be called by any function other than import.
+
+math operations are possible, such as "5+5" will return "10".
+
+comments are declared with a '{', and ended with a '}', for example "{this is a comment and will be ignored}".
+
+modifiers can be added to 'read', 'write', and 'ngi', valid modifiers listed below;
+-------------------------
+-ign            : ignores all guython comments, read
+-lines          : prints with line numbers, read
+-size           : prints with file size, read
+-exists         : checks if file exists, read
+-add            : writes to new line, write
+-create         : creates a file if it doesn't exist, write
+-permissions {n}: writes with permissions such as '755', write
+-s '{script}'   : executes that script in the new window, ngi
+-------------------------
+
+def             : syntax: (def{functionName}_ [args]), function: declares a function which can then be called upon with '{functionName}_ [args]'. Functions MUST have an '_' at then end of name or they will not be recognized. function arguments can be a variable, string or integer.
+         
+while           : syntax: (while{variableName}|{number},{opperand},{variableName}|{number}), function: repeats following functions while the operation is true
+         
+if              : syntax: (if{variableName}|{number},{opperand},{variableName}|{number}), function: does any function if the if is true
+         
+goto            : syntax: (goto{lineNumber}), function: goes to the line declared
+         
+import          : syntax: (import{fileName}.gy|.guy) | (import {fileName}.gy|.guy), function: imports a .gy|.guy file's variables, ex: import {fileName}.gy, print {fileName}.{variableName}
+         
+input           : syntax: ({variableName}=input) | ({printinput}), function: saves the input or prints the input
+         
+print           : syntax: (print"str"|{variableName}|print"str"{variableName}), function: prints the following, additions: ',' using the ',' modifier in between two data adds a space between the two, print "str","wow" will print "str wow" and print "str""wow" will print "strwow"
+         
+guython         : syntax: (guython{fileName}.gy|.guy), function: runs the guython file using the interpreter
+
+createWindow    : syntax: (createWindow "windowName" {width} {height}) function: creates a GUI window
+
+setWindowColor  : syntax: (setWindowColor "{hexCode}") function: sets window background color
+
+waitGui         : syntax: (waitGui) function: halts until GUI is closed
+
+createButton    : syntax: (createButton "buttonText" {x} {y} {width} {height} {command}) function: creates a clickable button, the {command} area calls the defined function with that name
+
+createLabel     : syntax: (createLabel "labelText" {x} {y} {width} {height}) function: creates a text label
+
+createEntry     : syntax: (createEntry {x} {y} {width} {height} "placeHolderText") function: creates an entry field
+
+createImage     : syntax: (createImage "path" {x} {y} {width} {height}) function: creates an image
+
+setText         : syntax: (setText {labelName} "text"|var) function: sets the label to that text
+
+readText        : syntax: (readText {entryName} var) function: reads the entry's text and saves to a Variable
+
+showMessage     : syntax: (showMessage "messageTitle" "message" {type}) function: shows a message box
+
+read            : syntax: (read "path" {fileName}.{fileExtension} {modifier}) function: reads and prints a file
+
+write           : syntax: (read "path" {fileName}.{fileExtension} "content" {modifier}) function: writes to a file
+
+ngi             : syntax: (ngi {modifier}) function: creates a New Guython Instance in the terminal
+
+eval            : syntax: (eval {x}) function: uses the interpreter to execute that code, useful for variables
+
+alias           : syntax: (alias {command} = {name}) function: gives an alias to a command, like 'alias print = p' for faster execution
+
+GPD (Guython Package Database) Commands
+-------------------------
+gpd pkgs        : Lists ALL Guython packages
+gpd install {p} : Installs the GPD package with that name
+gpd import {p}  : Imports the GPD package with that name
+gpd list        : Lists all the currently installed packages
+gpd help        : Lists all GPD Commands
+-------------------------

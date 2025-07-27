@@ -27,8 +27,8 @@ class GPD:
     
     def __init__(self, interpreter):
         self.interpreter = interpreter
-        self.base_url = "https://github.com/this-guy-git/guython-packages/blob/main/packages"
-        self.raw_base = "https://raw.githubusercontent.com/this-guy-git/guython-packages/main/packages/"
+        self.base_url = "https://github.com/this-guy-git/guython-packages/blob/main/packages?t={int(time.time())}"
+        self.raw_base = "https://raw.githubusercontent.com/this-guy-git/guython-packages/main/packages/?t={int(time.time())}"
         self.local_pkg_dir = os.getcwd() + "/packages"
         self.index_file = os.path.join(self.local_pkg_dir, "gpd_index.json")
         
@@ -224,28 +224,20 @@ class GPD:
             module = importlib.util.module_from_spec(spec)
             
             # Create safe execution environment
-            safe_modules = {
-                'time': __import__('time'),
-                'datetime': __import__('datetime'),
-                'math': __import__('math'),
-                'random': __import__('random'),
-                'json': __import__('json'),
-                're': __import__('re'),
-                'itertools': __import__('itertools'),
-                'functools': __import__('functools'),
-                'collections': __import__('collections'),
-                'hashlib': __import__('hashlib'),
-                'base64': __import__('base64'),
-                'urllib.parse': __import__('urllib.parse'),
-                'requests': __import__('requests'),
+            unsafe_modules = {
+                'ctypes',
+                'cffi',
+                'marshal',
+                'pickle',
+                'importlib',
             }
             
             # Define safe import function
             def safe_import(name, globals=None, locals=None, fromlist=(), level=0):
-                if name in safe_modules:
-                    return safe_modules[name]
-                else:
+                if name in unsafe_modules:
                     raise ImportError(f"Module '{name}' not allowed in Guython packages")
+                return __import__(name, globals, locals, fromlist, level)
+            
             
             safe_globals = {
                 '__builtins__': {
@@ -283,7 +275,6 @@ class GPD:
             }
             
             # Add safe modules directly to globals so they're available
-            safe_globals.update(safe_modules)
             
             # Read and compile the code
             with open(py_path, 'r') as f:
@@ -293,8 +284,8 @@ class GPD:
             dangerous_patterns = [
                 'eval(', 'exec(', 
                 'open(', 'file(', 
-                'os.system', 'os.popen', 'os.spawn',
-                'subprocess.', 'sys.exit', 'sys.path',
+                'os.system', 'os.spawn',
+                'subprocess.', 'sys.path',
                 'importlib.import_module'
             ]
             

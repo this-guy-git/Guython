@@ -6,6 +6,7 @@ import requests
 import subprocess
 import importlib.util
 import sys
+import time
 from urllib.parse import urljoin
 from types import SimpleNamespace
 from typing import Dict, List, Optional
@@ -28,7 +29,7 @@ class GPD:
     def __init__(self, interpreter):
         self.interpreter = interpreter
         self.base_url = "https://github.com/this-guy-git/guython-packages/blob/main/packages?t={int(time.time())}"
-        self.raw_base = "https://raw.githubusercontent.com/this-guy-git/guython-packages/main/packages/?t={int(time.time())}"
+        self.raw_base = f"https://raw.githubusercontent.com/this-guy-git/guython-packages/main/packages/?t={int(time.time())}"
         self.local_pkg_dir = os.getcwd() + "/packages"
         self.index_file = os.path.join(self.local_pkg_dir, "gpd_index.json")
         
@@ -126,7 +127,7 @@ class GPD:
                     downloaded_files.append(file_path)
                     print(f"✓ Downloaded: {file_path}")
                 except requests.RequestException as e:
-                    print(f"⚠️ Warning: Failed to download {file_path}: {str(e)}")
+                    print(f"Warning: Failed to download {file_path}: {str(e)}")
     
             # 5. Find the main file
             main_base = pkg_data.get('main', 'main')
@@ -169,7 +170,7 @@ class GPD:
             }
             self._save_index()
             
-            print(f"✅ Successfully installed {pkg_name} v{pkg_data['version']}")
+            print(f"✓ Successfully installed {pkg_name} v{pkg_data['version']}")
             print(f"Main file: {main_file}")
             
         except Exception as e:
@@ -374,3 +375,72 @@ class GPD:
             print(f"Successfully uninstalled {pkg_name}")
         except Exception as e:
             raise GuythonRuntimeError(f"Uninstall failed: {str(e)}")
+
+    def check_updates(self):
+        try:
+            remote_index = self._fetch_remote_index()
+        except GuythonRuntimeError as e:
+            print(f"Could not fetch remote index: {e}")
+            return
+    
+        updates_found = False
+        for pkg, data in self.package_index.items():
+            current_version = data.get('version', '0.0.0')
+            remote_version = remote_index.get(pkg, {}).get('version')
+            if remote_version is None:
+                print(f"{pkg}: Not found in remote repository")
+                continue
+            
+            if remote_version != current_version:
+                print(f"{pkg}: {current_version} -> {remote_version} (Update available)")
+                updates_found = True
+            else:
+                print(f"{pkg}: {current_version} (Up to date)")
+    
+        if not updates_found:
+            print("All packages are up to date.")
+
+    def update_package(self, pkg_name: str):
+        if pkg_name not in self.package_index:
+            print(f"Package '{pkg_name}' is not installed.")
+            return
+
+        try:
+            remote_index = self._fetch_remote_index()
+        except GuythonRuntimeError as e:
+            print(f"Could not fetch remote index: {e}")
+            return
+
+        current_version = self.package_index[pkg_name].get('version', '0.0.0')
+        remote_version = remote_index.get(pkg_name, {}).get('version')
+
+        if remote_version is None:
+            print(f"Package '{pkg_name}' not found in remote repository.")
+            return
+
+        if current_version == remote_version:
+            print(f"'{pkg_name}' is already up to date.")
+            return
+
+        print(f"Updating '{pkg_name}' from {current_version} to {remote_version}...")
+
+        # Remove old files
+        pkg_dir = os.path.join(self.local_pkg_dir, pkg_name)
+        if os.path.exists(pkg_dir):
+            shutil.rmtree(pkg_dir)
+
+        if pkg_name in self.package_index:
+            del self.package_index[pkg_name]
+            self._save_index()
+
+        try:
+            self.install(pkg_name)
+
+            # 🛠️ Force update local index from remote
+            new_data = remote_index[pkg_name]
+            self.package_index[pkg_name]['version'] = new_data.get('version', remote_version)
+            self._save_index()
+
+            print(f"'{pkg_name}' updated successfully.")
+        except GuythonRuntimeError as e:
+            print(f"Update failed: {e}")

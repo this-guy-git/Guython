@@ -430,24 +430,28 @@ class GuythonInterpreter:
                 if not args:
                     raise GuythonSyntaxError("Missing package name")
                 self.gpd.install(args.strip('"\''))
+
             elif cmd == "import":
                 if not args:
                     raise GuythonSyntaxError("Missing package name")
                 import_parts = args.split(maxsplit=2)
                 if len(import_parts) == 1:
-                    self.gpd.import_pkg(import_parts[0].strip('"\''))
+                    self.gpd.import_pkg(import_parts[0].strip('"\'')) 
                 elif len(import_parts) == 3 and import_parts[1] == "as":
-                    self.gpd.import_pkg(import_parts[0].strip('"\''), import_parts[2].strip('"\''))
+                    self.gpd.import_pkg(import_parts[0].strip('"\''), import_parts[2].strip('"\'')) 
                 else:
                     raise GuythonSyntaxError("Invalid import syntax. Use: gpd import <package> [as <alias>]")
+
             elif cmd == "list":
                 print("Installed packages:")
                 for pkg in self.gpd.list_packages():
                     print(f"- {pkg} v{self.gpd.package_index[pkg]['version']}")
+
             elif cmd == "uninstall":
                 if not args:
                     raise GuythonSyntaxError("Missing package name")
                 self.gpd.uninstall(args.strip('"\''))
+
             elif cmd == "pkgs":
                 try:
                     remote_index = self.gpd._fetch_remote_index()
@@ -457,28 +461,38 @@ class GuythonInterpreter:
                     for pkg, data in remote_index.items():
                         version = data.get('version', '?.?.?')
                         description = data.get('description', 'No description available')
-                        # Format with consistent spacing
                         print(f"- {pkg.ljust(max_name_len)} (v{version}): {description}")
                 except Exception as e:
                     print(f"Error fetching remote packages: {e}")
+
+            elif cmd == "check":
+                self.gpd.check_updates()
+
+            elif cmd == "update":
+                if not args:
+                    raise GuythonSyntaxError("Missing package name")
+                self.gpd.update_package(args.strip('"\''))
+
             elif cmd == "help":
-                try:
-                    print("Available GPD commands:")
-                    print("""
-pkgs             -  fetches all packages available for download
-list             -  lists all install packages
-install {name}   -  installs package with that name
-uninstall {name} -  uninstalls the package with that name
-import {name}    -  imports the package with that name
-                    """)
-                except Exception as e:
-                    print(f"Unexpected error: {str(e)}")
+                print("Available GPD commands:")
+                print("""
+pkgs             - fetch all packages available for download
+list             - list all installed packages
+install {name}   - install package with that name
+uninstall {name} - uninstall the package with that name
+import {name}    - import the package with that name
+check            - check for available updates for installed packages
+update {name}    - update the specified package to latest version
+                """)
+
             else:
                 raise GuythonSyntaxError(f"Unknown GPD command: '{cmd}', use 'gpd help' to list all GPD commands")
+
         except GuythonRuntimeError as e:
             print(f"GPD Error: {e}")
         except Exception as e:
             print(f"Unexpected error: {str(e)}")
+
     
     def _handle_goto(self, code: str, importing: bool):
         """Handle goto statement"""

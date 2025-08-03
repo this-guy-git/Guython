@@ -1,7 +1,7 @@
 import operator
 import math
 
-VERSION = "v2.1.0b25727"
+VERSION = "v2.2.0b2582"
 MAX_LOOP_ITERATIONS = 10000
 
 SAFE_OPERATIONS = {

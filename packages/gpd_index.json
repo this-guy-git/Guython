@@ -9,14 +9,32 @@
       "manifest.gy"
     ]
   },
+  "easygui": {
+    "version": "0.1.0",
+    "main": "main",
+    "language": "python",
+    "files": [
+      "main.py",
+      "manifest.gy"
+    ]
+  },
   "example-package": {
-    "version": "1.0.0",
+    "version": "1.1.0",
     "main": "main",
     "language": "guython",
     "files": [
       "main.gy",
       "manifest.gy",
       "README.md"
+    ]
+  },
+  "text": {
+    "version": "1.0.0",
+    "main":"main",
+    "files": [
+      "main.py",
+      "README.md",
+      "manifest.gy"
     ]
   }
 }

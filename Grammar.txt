@@ -87,4 +87,6 @@ gpd install {p} : Installs the GPD package with that name
 gpd import {p}  : Imports the GPD package with that name
 gpd list        : Lists all the currently installed packages
 gpd help        : Lists all GPD Commands
+gpd check       : Checks all installed packages for updates
+gpd update {p}  : Updates package with that name
 -------------------------

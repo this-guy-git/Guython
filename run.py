@@ -4,6 +4,8 @@ import os
 from guython.core.interpreter import GuythonInterpreter
 from guython.core.constants import VERSION
 
+from guython.core.update import check_for_updates
+
 def main():
     interpreter = GuythonInterpreter()
 
@@ -28,6 +30,7 @@ def main():
         # Interactive CLI mode
         print(f"Guython Interpreter {VERSION}")
         print("Type 'exit' to quit, 'debug' to toggle debug mode, 'vars' to show variables.")
+        check_for_updates()
 
         while True:
             try:

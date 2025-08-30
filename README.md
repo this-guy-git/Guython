@@ -1,3 +1,22 @@
+# DEPRECATED
+As of August 30th, 2025, Guython has been Deprecated, Guython will no longer continue to be maintained.
+
+**Q:** Why?
+
+**A:** Guython has become far to bug filled, it is way too slow, and it is not useful.
+
+
+**Q:** What comes after Guython?
+
+**A:** Im currently working on a new compiled Language called Lumen, more info avaialable soon.
+
+
+**Q:** What will happen to the GPD?
+
+**A:** The GPD will probably be changed to Guy's Package Database, since it will stay up and be used for more things, like Lumen Packages.
+# DEPRECATED
+
+
 ### **GUYTHON V2.2.0B25828**
 
 Guython is a ***VERY*** simple programming language created with Python.
@@ -31,3 +50,4 @@ Better to run the interpreter in Command Prompt because VSCode cannot import Pil
 
 ### **Whats New for GPD**
 - Added new 'text' string manipulation package
+

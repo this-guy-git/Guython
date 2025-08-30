@@ -8,7 +8,7 @@ As of August 30th, 2025, Guython has been Deprecated, Guython will no longer con
 
 **Q:** What comes after Guython?
 
-**A:** Im currently working on a new compiled Language called Lumen, more info avaialable soon.
+**A:** Im currently working on a new compiled Language called Lumen, more info [here](https://github.com/this-guy-git/Lumen).
 
 
 **Q:** What will happen to the GPD?
@@ -50,4 +50,5 @@ Better to run the interpreter in Command Prompt because VSCode cannot import Pil
 
 ### **Whats New for GPD**
 - Added new 'text' string manipulation package
+
 
